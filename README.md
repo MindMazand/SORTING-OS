@@ -22,9 +22,11 @@
 | هسته دامنه C# (پول/وزن/تراز/تسویه/کدینگ/امنیت) | IMPLEMENTED (NOT RUN) | `src/Mazandasht.Domain` — ساخت روی Windows لازم است |
 | پوسته WPF (داشبورد، دکمه +، نمایشگر دوم) | IMPLEMENTED (NOT RUN) | `src/Mazandasht.Presentation` |
 | تست‌های C# (xUnit) | NOT RUN | `src/Mazandasht.Tests` — اجرا روی Windows |
-| فایل‌های Excel مرجع | BLOCKED-01 | در مخزن و Google Drive یافت نشد؛ مالک باید ارائه کند |
+| فایل‌های Excel مرجع | ✅ رفع شد (BLOCKED-01) | ۱۵ فایل سیستم + ۱۱ قالب واردسازی از Google Drive مالک استخراج شد؛ ساختار در `docs/WORKBOOK_SPEC_FA.md` — فقط ساختار، بدون داده واقعی |
+| `schema_v001` vs قالب‌های مالک | ❌ ۱۲ شکاف | ۳ تعارض قطعی (`PartyType`, `event_type` سبد, «خالی ≠ صفر») — نیازمند `schema_v002`؛ جزئیات در `docs/decision-log.md` DEC-NEW-009 |
+| تصویر فرمول‌های سلولی + قالب گزارش‌های مالی/سبد/چک/حسابداری | BLOCKED-02 | متن قاعده استخراج شد اما فرمول عیناً و قالب ۷ گزارش باقی مانده — فاز گزارش‌گیری را مسدود می‌کند |
 
-جزئیات: `reports/INITIAL_REPOSITORY_AUDIT.md` و `reports/BASELINE.md`.
+جزئیات: `reports/INITIAL_REPOSITORY_AUDIT.md`، `reports/BASELINE.md` و `docs/WORKBOOK_SPEC_FA.md` (مشخصات قالب‌های کاری).
 
 ## ساخت روی Windows
 
