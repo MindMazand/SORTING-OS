@@ -192,3 +192,10 @@ lookup entirely, so the settlements template could not import in C# either.
 Both fixed. The lesson repeats: **the Python reference had every one of these
 bugs too**, and each was found by making a test execute the path rather than
 assert that the path exists.
+
+### NEW-09 — writer parity: same tables, same columns
+
+Contract parity compared field definitions. It did not compare what the writers
+actually insert, which is the thing that produces wrong rows. All 18 target
+tables now compare column-for-column in both languages. Proven by deleting one
+column from the C# writer and watching the check fail.

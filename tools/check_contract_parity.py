@@ -243,10 +243,68 @@ def check_parity():
         fail("قاعده null/پیش‌فرض در هیچ‌کدام پیدا نشد")
 
 
+def check_writer_parity():
+    """The two writers must insert the SAME columns into the SAME tables.
+
+    Comparing only the contract misses this: a writer can forget a column that
+    the contract declares, and the row is inserted with that field missing and
+    no error. Sorted-set comparison, because ordering is not semantic.
+    """
+    py_src = open(os.path.join(ROOT, "tools", "import_engine.py"), encoding="utf-8").read()
+    cs_src = open(os.path.join(ROOT, "src", "Mazandasht.Application", "Import",
+                               "ImportWriter.cs"), encoding="utf-8").read()
+
+    def blocks(src, call_re, key_re):
+        out = {}
+        for m in call_re.finditer(src):
+            table = m.group(1)
+            i = m.end() - 1
+            depth = 0
+            while i < len(src):
+                if src[i] == "{":
+                    depth += 1
+                elif src[i] == "}":
+                    depth -= 1
+                    if depth == 0:
+                        break
+                i += 1
+            out.setdefault(table, set()).update(key_re.findall(src[m.end() - 1:i]))
+        return out
+
+    py = blocks(py_src, re.compile(r'_insert\(con,\s*"(\w+)",\s*\{'),
+                re.compile(r'"(\w+)":'))
+    cs = blocks(cs_src,
+                re.compile(r'Insert\("(\w+)",\s*new Dictionary<string,\s*object>\s*\{'),
+                re.compile(r'\{\s*"(\w+)"\s*,'))
+
+    # the batch bookkeeping tables have no C# counterpart by design: the C#
+    # ImportRunner records them through IImportBatchStore, not through Insert.
+    ignore = {"import_batches", "import_rows", "partnerships"}
+    py = {k: v for k, v in py.items() if k not in ignore}
+
+    only_py = sorted(set(py) - set(cs))
+    only_cs = sorted(set(cs) - set(py))
+    if only_py:
+        fail("جدول‌هایی که فقط پایتون می‌نویسد: " + ", ".join(only_py))
+    if only_cs:
+        fail("جدول‌هایی که فقط C# می‌نویسد: " + ", ".join(only_cs))
+
+    diffs = 0
+    for table in sorted(set(py) & set(cs)):
+        missing = sorted(py[table] - cs[table])
+        extra = sorted(cs[table] - py[table])
+        if missing or extra:
+            diffs += 1
+            fail(f"{table}: C# جا انداخته {missing} · C# اضافه دارد {extra}")
+    if not diffs and not only_py and not only_cs:
+        ok(f"نویسنده‌ها: {len(py)} جدول، ستون‌ها یکسان")
+
+
 def main():
     print("=== تطبیق قرارداد C# با مرجع Python ===")
     syntax_ok = check_csharp_syntax()
     check_parity()
+    check_writer_parity()
     print()
     if FAILURES:
         print(f"{len(FAILURES)} اختلاف — قرارداد دو نسخه‌ای دکتر شده است")
