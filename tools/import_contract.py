@@ -184,7 +184,7 @@ PURCHASE_INVOICES = Template(
         _f("DateShamsi", "تاریخ شمسی", SHAMSI, True, "date_shamsi"),
         _f("SupplierCode", "کد فروشنده", CODE, True, "party_id", lookup="parties:code"),
         _f("WeighCode", "کد باسکول ورودی", CODE, True, "weigh_ticket_id",
-           lookup="weigh_tickets:code"),
+           lookup="weigh_tickets:doc_number"),
         _f("ProductCode", "کد محصول", CODE, True, "product_id", lookup="products:code"),
         _f("PurchaseKg", "وزن خرید (kg)", KG, True, "grams"),
         _f("RateRialPerKg", "فی خرید (ریال/kg)", RIAL, True, "rate_rial_per_kg"),

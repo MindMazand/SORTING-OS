@@ -146,3 +146,24 @@ failure buried six innocent ones. `check()` now rolls back on failure.
     test_import.py        36 -> 39 tests, 39/39 PASS
     verify_all.py         6 gates, exit 0
     contract->schema      124 columns, 11 templates, PASS
+
+### NEW-07b — the 11 templates had never been run as a chain
+
+Each template had its own test. Nothing ran them in the owner's real order on
+one database, so nothing proved the *links* between them. `tools/test_chain.py`
+now does: parties -> products -> weighing -> purchase -> sales -> sorting ->
+baskets -> bank -> cheques -> settlements -> partnership, in order, on a fresh
+database, asserting the net weight, the single stock movement, the invoice's
+link to its weigh ticket, the settlement landing on the correct side, and the
+partnership keeping both its partner and its product. It ends with
+`foreign_key_check` empty and `integrity_check = ok`.
+
+Writing it found two more things:
+
+  * **The purchase invoice could not find its weigh ticket.** `WeighCode`
+    resolved against `weigh_tickets.code`, which is the engine's internal
+    `WT0001`. The owner types their own document number on the weigh sheet and
+    quotes that same number on the invoice. Changed to `doc_number`.
+  * **The lot code is generated (`LOT001`) and the owner never sees it**, yet
+    the sales and sorting sheets must quote it. That is a real product gap, not
+    a test artefact; it is recorded in the decision log rather than papered over.

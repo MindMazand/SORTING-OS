@@ -195,7 +195,7 @@ namespace Mazandasht.Application.Import
                 F("DateShamsi", "تاریخ شمسی", FieldKind.Shamsi, true, "date_shamsi"),
                 F("SupplierCode", "کد فروشنده", FieldKind.Code, true, "party_id", lookup: "parties:code"),
                 F("WeighCode", "کد باسکول ورودی", FieldKind.Code, true, "weigh_ticket_id",
-                  lookup: "weigh_tickets:code"),
+                  lookup: "weigh_tickets:doc_number"),
                 F("ProductCode", "کد محصول", FieldKind.Code, true, "product_id", lookup: "products:code"),
                 F("PurchaseKg", "وزن خرید (kg)", FieldKind.Kg, true, "grams"),
                 F("RateRialPerKg", "فی خرید (ریال/kg)", FieldKind.Rial, true, "rate_rial_per_kg"),

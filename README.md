@@ -26,7 +26,7 @@
 | `schema_v002` + `v003` vs قالب‌های مالک | ✅ ساخته و تست شد | هر ۲۲ شکاف بسته شد (۲ بازسازی جدول + ۲۰ ستون + ۹ تریگر). `docs/decision-log.md` DEC-NEW-010..014 · `reports/STAGE_SCHEMA_V002_FA.md` |
 | موتور واردسازی Excel (۷ مرحله) | ✅ IMPLEMENTED + TESTED | `tools/xlsx_io.py`, `import_contract.py`, `import_parser.py`, `import_engine.py` → `tools/test_import.py` **34/34 PASS** · `reports/STAGE_IMPORT_ENGINE_FA.md` |
 | پورت C# موتور واردسازی | 🟡 IMPLEMENTED / NOT RUN | ۸ فایل در `src/Mazandasht.Application/Import/` + `SqliteImportStore.cs` + `SqliteImportBatchStore.cs`. نحو، تطبیق قرارداد (۱۲۹ ستون)، و ستون‌های اسکیما (۱۸۷) PASS — اما **کامپایل/اجرا نشده** · `reports/STAGE_CSHARP_PORT_FA.md` |
-| بررسی‌های بدون .NET | ✅ ۶ دروازه | `python3 tools/verify_all.py` → اسکیما ۳۹/۳۹ · واردسازی ۳۹/۳۹ · تطبیق قرارداد · ستون↔اسکیما+طرح برگشت · نگاشت قرارداد↔اسکیما · ارجاع پروژه‌ها |
+| بررسی‌های بدون .NET | ✅ ۷ دروازه | `python3 tools/verify_all.py` → اسکیما ۳۹/۳۹ · واردسازی ۳۹/۳۹ · تطبیق قرارداد · ستون↔اسکیما+طرح برگشت · نگاشت قرارداد↔اسکیما · ارجاع پروژه‌ها · زنجیره ۱۱ قالب |
 | فرهنگ داده (فصل ۱۸) | ✅ تولیدشده | `docs/DATA_DICTIONARY_FA.md` — با `tools/gen_data_dictionary.py` از اسکیمای واقعی ساخته می‌شود، دستی نیست |
 | تأیید مالک برای `party_kind` | ⏳ منتظر مالک | ردیف‌های موجود با `party_kind_confirmed=0` علامت خورده‌اند؛ مالک باید مرور کند (DEC-NEW-011) |
 | تصویر فرمول‌های سلولی + قالب گزارش‌های مالی/سبد/چک/حسابداری | BLOCKED-02 | متن قاعده استخراج شد اما فرمول عیناً و قالب ۷ گزارش باقی مانده — فاز گزارش‌گیری را مسدود می‌کند |
