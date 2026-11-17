@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Data.SQLite;
+using System.Linq;
 using Mazandasht.Domain;
 
 namespace Mazandasht.Persistence
@@ -20,23 +21,40 @@ namespace Mazandasht.Persistence
         {
             if (!PartyNature.IsValid(party.Nature))
                 throw new ArgumentException("Invalid party nature: " + party.Nature);
+            // G-01: PERSON/COMPANY is required for new parties. A blank value is
+            // only acceptable for the migration backfill, which flags itself
+            // unconfirmed; the app must never create an unclassified party.
+            if (!PartyKind.IsValid(party.PartyKind))
+                throw new ArgumentException("Invalid party kind (PERSON/COMPANY): " + party.PartyKind);
+            if (!string.IsNullOrEmpty(party.EconomicCode) && party.EconomicCode.Trim().Length != 0
+                && !party.EconomicCode.All(char.IsDigit))
+                throw new ArgumentException("Economic code must be digits or left blank.");
             using (var con = new SQLiteConnection(_connectionString))
             {
                 con.Open();
                 using (var cmd = con.CreateCommand())
                 {
                     cmd.CommandText =
-                        "INSERT INTO parties (code, display_name, nature, national_code, phone, mobile, address, is_active) " +
-                        "VALUES (@code, @name, @nature, @nat, @phone, @mobile, @addr, 1); " +
+                        "INSERT INTO parties (code, display_name, nature, party_kind, party_kind_confirmed, " +
+                        "  economic_code, national_code, phone, mobile, address, is_active) " +
+                        "VALUES (@code, @name, @nature, @kind, 1, @econ, @nat, @phone, @mobile, @addr, 1); " +
                         "SELECT last_insert_rowid();";
                     cmd.Parameters.AddWithValue("@code", party.Code);
                     cmd.Parameters.AddWithValue("@name", party.DisplayName);
                     cmd.Parameters.AddWithValue("@nature", party.Nature);
+                    cmd.Parameters.AddWithValue("@kind", party.PartyKind);
+                    // Blank stays blank (golden rule 7): an absent economic code
+                    // is stored as NULL, never as "0".
+                    cmd.Parameters.AddWithValue("@econ",
+                        string.IsNullOrWhiteSpace(party.EconomicCode)
+                            ? (object)DBNull.Value
+                            : party.EconomicCode.Trim());
                     cmd.Parameters.AddWithValue("@nat", party.NationalCode ?? "");
                     cmd.Parameters.AddWithValue("@phone", party.Phone ?? "");
                     cmd.Parameters.AddWithValue("@mobile", party.Mobile ?? "");
                     cmd.Parameters.AddWithValue("@addr", party.Address ?? "");
                     party.Id = Convert.ToInt64(cmd.ExecuteScalar());
+                    party.PartyKindConfirmed = true;
                 }
             }
             return party;
@@ -49,7 +67,10 @@ namespace Mazandasht.Persistence
                 con.Open();
                 using (var cmd = con.CreateCommand())
                 {
-                    cmd.CommandText = "SELECT id, code, display_name, nature, is_active FROM parties WHERE code=@c";
+                    cmd.CommandText =
+                        "SELECT id, code, display_name, nature, is_active, " +
+                        "       party_kind, party_kind_confirmed, COALESCE(economic_code,'') " +
+                        "FROM parties WHERE code=@c";
                     cmd.Parameters.AddWithValue("@c", code);
                     using (var r = cmd.ExecuteReader())
                     {
@@ -60,7 +81,10 @@ namespace Mazandasht.Persistence
                             Code = r.GetString(1),
                             DisplayName = r.GetString(2),
                             Nature = r.GetString(3),
-                            IsActive = r.GetInt32(4) == 1
+                            IsActive = r.GetInt32(4) == 1,
+                            PartyKind = r.IsDBNull(5) ? "" : r.GetString(5),
+                            PartyKindConfirmed = r.GetInt32(6) == 1,
+                            EconomicCode = r.GetString(7)
                         };
                     }
                 }

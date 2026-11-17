@@ -29,6 +29,24 @@ namespace Mazandasht.Domain
             nature != null && ((IList<string>)All).Contains(nature);
     }
 
+    /// <summary>
+    /// G-01: the 01_Parties import template classifies every party as PERSON or
+    /// COMPANY. That is a legal-entity axis, NOT the account-class axis encoded
+    /// in the stable code prefix (PartyNature). The two must never be merged:
+    /// merging them would either break the code system or lose the template's
+    /// vocabulary. Hence a separate type, validated separately.
+    /// </summary>
+    public static class PartyKind
+    {
+        public const string Person = "PERSON";
+        public const string Company = "COMPANY";
+
+        public static readonly IReadOnlyList<string> All = new[] { Person, Company };
+
+        public static bool IsValid(string kind) =>
+            kind != null && ((IList<string>)All).Contains(kind);
+    }
+
     /// <summary>Generates the next code for a prefix: e.g. S + 001 -> S002.</summary>
     public static class CodeGenerator
     {

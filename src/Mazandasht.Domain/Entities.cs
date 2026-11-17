@@ -11,7 +11,15 @@ namespace Mazandasht.Domain
         public long Id { get; set; }
         public string Code { get; set; } = "";          // stable system code
         public string DisplayName { get; set; } = "";   // changeable, safe
-        public string Nature { get; set; } = "";        // C/SL/S/E/X/F/L/CAP
+        public string Nature { get; set; } = "";        // C/SL/S/E/X/F/L/CAP (account class)
+        /// <summary>
+        /// PERSON or COMPANY — the 01_Parties template's own vocabulary (G-01).
+        /// Independent of Nature: a COMPANY can also be a supplier ('S').
+        /// </summary>
+        public string PartyKind { get; set; } = "";
+        /// <summary>False while the migration backfill is unconfirmed by the owner.</summary>
+        public bool PartyKindConfirmed { get; set; }
+        public string EconomicCode { get; set; } = "";  // G-02, optional
         public string NationalCode { get; set; } = "";
         public string Phone { get; set; } = "";
         public string Mobile { get; set; } = "";

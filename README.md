@@ -17,13 +17,15 @@
 
 | بخش | وضعیت | شاهد |
 |---|---|---|
-| اسکیمای دیتابیس (تمام موجودیت‌های فصل ۱۸) | IMPLEMENTED + TESTED | `database/schema/schema_v001.sql` + `tools/verify_database.py` → **18/18 PASS** |
+| اسکیمای دیتابیس (تمام موجودیت‌های فصل ۱۸) | IMPLEMENTED + TESTED | `database/schema/schema_v001.sql` + `database/migrations/002_v002_workbook_alignment.sql` + `tools/verify_database.py` → **38/38 PASS** |
 | داده پایه (کدها، P01/P02، بانک‌ها، نقش‌ها) | IMPLEMENTED + TESTED | `database/seed/seed_v001.sql` |
 | هسته دامنه C# (پول/وزن/تراز/تسویه/کدینگ/امنیت) | IMPLEMENTED (NOT RUN) | `src/Mazandasht.Domain` — ساخت روی Windows لازم است |
 | پوسته WPF (داشبورد، دکمه +، نمایشگر دوم) | IMPLEMENTED (NOT RUN) | `src/Mazandasht.Presentation` |
 | تست‌های C# (xUnit) | NOT RUN | `src/Mazandasht.Tests` — اجرا روی Windows |
 | فایل‌های Excel مرجع | ✅ رفع شد (BLOCKED-01) | ۱۵ فایل سیستم + ۱۱ قالب واردسازی از Google Drive مالک استخراج شد؛ ساختار در `docs/WORKBOOK_SPEC_FA.md` — فقط ساختار، بدون داده واقعی |
-| `schema_v001` vs قالب‌های مالک | ❌ ۱۲ شکاف | ۳ تعارض قطعی (`PartyType`, `event_type` سبد, «خالی ≠ صفر») — نیازمند `schema_v002`؛ جزئیات در `docs/decision-log.md` DEC-NEW-009 |
+| `schema_v002` vs قالب‌های مالک | ✅ ساخته و تست شد | هر ۲۲ شکاف بسته شد (۲ بازسازی جدول + ۲۰ ستون + ۹ تریگر). `docs/decision-log.md` DEC-NEW-010..014 · `reports/STAGE_SCHEMA_V002_FA.md` |
+| فرهنگ داده (فصل ۱۸) | ✅ تولیدشده | `docs/DATA_DICTIONARY_FA.md` — با `tools/gen_data_dictionary.py` از اسکیمای واقعی ساخته می‌شود، دستی نیست |
+| تأیید مالک برای `party_kind` | ⏳ منتظر مالک | ردیف‌های موجود با `party_kind_confirmed=0` علامت خورده‌اند؛ مالک باید مرور کند (DEC-NEW-011) |
 | تصویر فرمول‌های سلولی + قالب گزارش‌های مالی/سبد/چک/حسابداری | BLOCKED-02 | متن قاعده استخراج شد اما فرمول عیناً و قالب ۷ گزارش باقی مانده — فاز گزارش‌گیری را مسدود می‌کند |
 
 جزئیات: `reports/INITIAL_REPOSITORY_AUDIT.md`، `reports/BASELINE.md` و `docs/WORKBOOK_SPEC_FA.md` (مشخصات قالب‌های کاری).
