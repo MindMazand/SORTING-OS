@@ -126,6 +126,44 @@ def main():
                 fail(f"ستون idempotency ناموجود: {table}.{col}")
         print("PASS  جدول/ستون‌های idempotency همگی موجودند")
 
+    # 5. rollback plan parity: the C# plan and the Python plan describe the
+    #    same deletion graph. These two drifted apart once and the result was a
+    #    foreign-key failure only a real import could expose.
+    import import_engine as IE
+    plan_src = open(os.path.join(ROOT, "src", "Mazandasht.Application", "Import",
+                                 "ImportRunner.cs"), encoding="utf-8").read()
+    # The switch body contains nested braces (new[] { ... }), so a non-greedy
+    # match to the first '}' truncates it. Anchor on the method's own closing
+    # brace: the line that starts with exactly 8 spaces and '}'.
+    block = re.search(r'private static IReadOnlyList<Tuple<string, string, string>> '
+                      r'RollbackPlan.*?switch \(templateCode\)\s*\{(.*?)\n        \}',
+                      plan_src, re.S)
+    if not block:
+        fail("RollbackPlan در ImportRunner.cs پیدا نشد")
+    else:
+        cs_plans = {}
+        for m in re.finditer(r'case "(\w+)":(.*?)(?=case "|default:)', block.group(1), re.S):
+            # the third argument is either (string)null or "tableName"
+            steps = re.findall(
+                r'Tuple\.Create\("(\w+)",\s*"(\w+)",\s*(?:\(string\)null|"(\w+)")',
+                m.group(2))
+            cs_plans[m.group(1)] = [(t, c, (p or None)) for t, c, p in steps]
+        # Single("x") helper form
+        for m in re.finditer(r'case "(\w+)": return Single\("(\w+)"\);', block.group(1)):
+            cs_plans[m.group(1)] = [(m.group(2), "id", None)]
+
+        py_plans = IE.ROLLBACK_PLAN
+        mismatched = []
+        for code in sorted(set(py_plans) | set(cs_plans)):
+            py = [(t, c, p) for t, c, p in py_plans.get(code, [])]
+            cs = cs_plans.get(code, [])
+            if py != cs:
+                mismatched.append(f"{code}: C#={cs} PY={py}")
+        for m in mismatched:
+            fail("طرح برگشت یکی نیست — " + m)
+        if not mismatched:
+            print(f"PASS  طرح برگشت {len(py_plans)} قالب در C# و Python یکسان است")
+
     con.close()
     print()
     if FAILURES:

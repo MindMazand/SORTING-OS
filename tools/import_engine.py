@@ -711,13 +711,110 @@ def _nature_from_code(code: str) -> str:
 # ---------------------------------------------------------------------------
 # Stage 7 — rollback
 # ---------------------------------------------------------------------------
-ROLLBACK_ORDER = [
-    "payment_allocations", "partnership_events", "cheques", "bank_transactions",
-    "basket_movements", "waste_records", "sorting_outputs", "sorting_inputs",
-    "sorting_batches", "sales_invoice_lines", "sales_invoices",
-    "purchase_invoice_lines", "purchase_invoices", "stock_movements", "lots",
-    "weigh_tickets", "products", "parties",
-]
+# Deletion plan per template: an ORDERED list of steps, children first.
+#
+# A flat list of table names is not enough, and a one-level "children" map is
+# not either. The real chain is TWO levels deep:
+#     weigh_tickets -> lots -> stock_movements
+# Deleting `lots` while `stock_movements` still point at them fails on the
+# foreign key. Both of those mistakes were made and then caught by
+# tools/test_import.py ("برگشت: باسکول با فرزندانش"); this plan is the fix.
+#
+# Each step is (table, column, parent) and always means
+#     DELETE FROM table WHERE column IN (<ids>)
+# where <ids> is either [created document id] (parent is None) or the ids
+# collected for `parent` in an earlier step.
+#
+# So ("stock_movements", "lot_id", "lots") deletes the movements of those lots,
+# and ("lots", "weigh_ticket_id", None) deletes the lots OF THIS TICKET — it does
+# NOT delete the ticket itself. Writing that step as if it deleted the root was
+# exactly the bug the tests caught.
+ROLLBACK_PLAN = {
+    # Order matters: a step can only reference a parent whose ids an EARLIER
+    # step collected. Writing this list parent-first (stock before lots) made
+    # the stock step silently skip, and the lot delete then failed on the FK.
+    "WEIGHING_IN": [
+        ("lots", "weigh_ticket_id", None),      # lots of this ticket
+        ("stock_movements", "lot_id", "lots"),  # their movements
+        ("weigh_tickets", "id", None),          # finally the ticket
+    ],
+    "SORTING": [
+        ("waste_records", "batch_id", None),
+        ("sorting_outputs", "batch_id", None),
+        ("sorting_inputs", "batch_id", None),
+        ("sorting_batches", "id", None),
+    ],
+    "PURCHASE_INVOICES": [
+        ("purchase_invoice_lines", "invoice_id", None),
+        ("purchase_invoices", "id", None),
+    ],
+    "SALES_INVOICES": [
+        ("sales_invoice_lines", "invoice_id", None),
+        ("sales_invoices", "id", None),
+    ],
+    "PARTIES": [("parties", "id", None)],
+    "PRODUCTS": [("products", "id", None)],
+    "BASKET_MOVEMENTS": [("basket_movements", "id", None)],
+    "BANK_TRANSACTIONS": [("bank_transactions", "id", None)],
+    "CHEQUES": [("cheques", "id", None)],
+    "SETTLEMENTS": [("payment_allocations", "id", None)],
+    "PARTNERSHIP": [("partnership_events", "id", None)],
+}
+
+
+
+def _children_ids(con, table: str, column: str, parent_ids: List[int]) -> List[int]:
+    if not parent_ids:
+        return []
+    marks = ",".join("?" for _ in parent_ids)
+    return [r[0] for r in con.execute(
+        f"SELECT id FROM {table} WHERE {column} IN ({marks})", parent_ids)]
+
+
+def _delete_ids(con, table: str, ids: List[int]) -> int:
+    if not ids:
+        return 0
+    marks = ",".join("?" for _ in ids)
+    con.execute(f"DELETE FROM {table} WHERE id IN ({marks})", ids)
+    return len(ids)
+
+
+def _run_rollback_plan(con, plan, root_id: int) -> int:
+    """Delete one imported document and everything hanging off it.
+
+    Collection runs forwards (a child's ids are only findable once its
+    parent's are known); deletion runs by DEPENDENCY DEPTH, deepest first,
+    root last. Neither "plan order" nor "reverse plan order" is correct:
+
+        collect:  lots -> stock_movements -> ticket
+        delete :  stock_movements (depth 2) -> lots (1) -> ticket (root)
+
+    Deleting a lot before its stock movements fails on the foreign key, and
+    deleting the ticket first fails too. Both were real failures before this
+    comment was true.
+    """
+    collected = {}
+    levels = []          # [(table, ids, depth, is_root)]
+    depth_of = {}
+
+    for table, column, parent in plan:
+        candidate = [root_id] if parent is None else collected.get(parent, [])
+        if not candidate:
+            continue
+        found = candidate if column == "id" else _children_ids(con, table, column, candidate)
+        if not found:
+            continue
+        depth = 0 if parent is None else depth_of.get(parent, 0) + 1
+        depth_of[table] = depth
+        collected[table] = found
+        levels.append((table, found, depth, column == "id"))
+
+    # Deeper first; at equal depth, non-root before root so a parent document
+    # is never removed while its lines still point at it.
+    for table, ids, _depth, _is_root in sorted(
+            levels, key=lambda x: (x[2], 0 if not x[3] else -1), reverse=True):
+        _delete_ids(con, table, ids)
+    return 1
 
 
 def rollback_batch(con, batch_id: int) -> BatchResult:
@@ -740,6 +837,10 @@ def rollback_batch(con, batch_id: int) -> BatchResult:
 
     tpl_code = batch[1]
     table, _ = TARGETS[tpl_code]
+    plan = ROLLBACK_PLAN.get(tpl_code)
+    if not plan:
+        out.errors.append(f"ترتیب حذف برای قالب {tpl_code} تعریف نشده است")
+        return out
     rows = con.execute(
         "SELECT id, mapped_json FROM import_rows WHERE batch_id=? AND status='IMPORTED'",
         (batch_id,)).fetchall()
@@ -760,8 +861,8 @@ def rollback_batch(con, batch_id: int) -> BatchResult:
                 new_id = None
             if new_id is None:
                 continue
-            con.execute(f"DELETE FROM {table} WHERE id=?", (new_id,))
-            out.created += 1
+            deleted = _run_rollback_plan(con, plan, new_id)
+            out.created += deleted
         con.execute(
             "UPDATE import_rows SET status='SKIPPED' WHERE batch_id=?", (batch_id,))
         con.execute(

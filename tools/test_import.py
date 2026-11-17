@@ -551,6 +551,51 @@ def main():
         assert out.created == 1, out.created
         assert any("همین فایل" in e for e in out.errors), out.errors
 
+    def t_rollback_weigh_with_children():
+        """A weigh ticket owns a lot, and the lot owns a stock movement.
+
+        The first version of rollback deleted the ticket first and died on the
+        foreign key — a real bug that no earlier test caught because only
+        basket movements (which have no children) were exercised.
+        """
+        p = build("WEIGHING_IN", "rb_weigh.xlsx", [[
+            "BASKOL-RB", "1403/09/01", "", "IN", "C001", "PB-ORANGE", "W01",
+            "8000", "", "8000", "", "", "", ""]])
+        out = E.import_file(con, p)
+        assert out.errors == [], out.errors
+        lot_before = con.execute(
+            "SELECT COUNT(*) FROM lots WHERE weigh_ticket_id IS NOT NULL").fetchone()[0]
+        stock_before = con.execute("SELECT COUNT(*) FROM stock_movements").fetchone()[0]
+        assert lot_before >= 1 and stock_before >= 1
+
+        rb = E.rollback_batch(con, out.batch_id)
+        assert rb.errors == [], rb.errors
+        assert rb.created == 1
+        # the ticket AND its children must be gone
+        assert con.execute(
+            "SELECT COUNT(*) FROM weigh_tickets WHERE source_key='BASKOL-RB'").fetchone()[0] == 0
+        assert con.execute(
+            "SELECT COUNT(*) FROM lots WHERE weigh_ticket_id IS NOT NULL").fetchone()[0] \
+            == lot_before - 1
+        assert con.execute("SELECT COUNT(*) FROM stock_movements").fetchone()[0] \
+            == stock_before - 1
+        # stock total must return to what it was before this import
+        assert con.execute("PRAGMA foreign_key_check").fetchall() == []
+
+    def t_rollback_sorting_with_children():
+        p = build("SORTING", "rb_sort.xlsx", [[
+            "SRT-RB", "1403/09/02", "LOT001", "W01", "1000", "PB-ORANGE",
+            "GR-ORANGE-1", "PK-CRATE", "W01", "800", "", "150", "50", "100", ""]])
+        out = E.import_file(con, p)
+        assert out.errors == [], out.errors
+        rb = E.rollback_batch(con, out.batch_id)
+        assert rb.errors == [], rb.errors
+        assert con.execute(
+            "SELECT COUNT(*) FROM sorting_batches WHERE source_key='SRT-RB'").fetchone()[0] == 0
+        assert con.execute(
+            "SELECT COUNT(*) FROM sorting_outputs WHERE batch_id NOT IN "
+            "(SELECT id FROM sorting_batches)").fetchone()[0] == 0
+
     tests = [
         ("خواننده: شیت/هدر/مقدار درست خوانده می‌شود", t_reader_basic),
         ("خواننده: صفر ابتدایی کد حفظ می‌شود", t_reader_preserves_leading_zeros),
@@ -581,6 +626,8 @@ def main():
         ("قاعده: موازنه جرم سورتینگ", t_sorting_mass_balance_enforced),
         ("پیش‌نمایش: هیچ سندی نوشته نمی‌شود", t_preview_writes_nothing),
         ("برگشت: دسته پیش‌نویس کامل حذف می‌شود", t_rollback_draft_batch),
+        ("برگشت: باسکول با فرزندانش (lot/stock) کامل حذف می‌شود", t_rollback_weigh_with_children),
+        ("برگشت: سورتینگ با فرزندانش کامل حذف می‌شود", t_rollback_sorting_with_children),
         ("برگشت: پس از تأیید ممکن نیست", t_rollback_refused_after_approval),
         ("اتمی: ردیف خراب، فایل را نیمه‌کاره نمی‌گذارد", t_atomic_on_failure),
         ("ردیابی: دسته، هش فایل و دو ردیف هدر", t_import_batch_audit_trail),
