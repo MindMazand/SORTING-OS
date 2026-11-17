@@ -1,0 +1,29 @@
+# Build output (C# / WPF)
+bin/
+obj/
+*.user
+*.suo
+
+# Local databases — never commit real or operational data
+*.db
+*.db-wal
+*.db-shm
+*.sqlite
+*.sqlite3
+
+# Backups
+*.bak
+backup/
+backups/
+
+# Secrets / environment
+.env
+*.pfx
+*.snk
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vs/
+.idea/
+*.swp

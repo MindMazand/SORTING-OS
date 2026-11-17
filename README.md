@@ -1,39 +1,62 @@
-# SORTING OS
+# مازندشت — SORTING OS
 
 **Repository description (GitHub):** Offline-first Windows desktop ERP for fruit-sorting operations, including intake, weighing, sorting, inventory, sales, settlements, bank/check workflows, and Persian financial reporting with Rial/Toman support.
 
-SORTING OS is intended for a real fruit-sorting business. It must preserve operational traceability and financial integrity; visual screens without working data paths do not count as implemented features.
+مازندشت نرم‌افزار دسکتاپ مدیریت بازرگانی، حسابداری، سورتینگ و انبار محصولات کشاورزی است؛ جایگزین عملیاتی سیستم Excel فعلی. کاملاً آفلاین، فارسی و راست‌چین، با دیتابیس محلی SQLite.
 
-## Current repository status
+## فناوری (سند مرجع v1.0)
 
-This repository contains an engineering baseline and a staged implementation plan, not a certified production accounting product. The desktop MVP currently includes a Persian Tkinter interface, local SQLite persistence, basic party/shipment/weighing/invoice workflows, and an accounting-core prototype. Its 17 unit tests passed in the package build environment; this is not proof of Windows 7 compatibility, end-to-end operational completeness, or statutory accounting compliance. See `contracts/CURRENT_IMPLEMENTATION_STATUS_FA.md` and `desktop/VALIDATION_REPORT_FA.md`.
+- **WPF + C# + .NET Framework 4.8 + SQLite x64** روی **Windows 8.1 x64 به بالا**
+- مدل کاربری: Single + تأیید مدیر (Manager Approval)
+- پول داخلی: ریال صحیح؛ تومان صرفاً واحد نمایش (Toman = Rial / 10)
+- وزن پایه: گرم صحیح؛ حداکثر ۳ رقم اعشار کیلوگرم در قالب‌های فعلی
+- موجودی: Simple + Detailed از یک Stock Movement Ledger
+- سند مرجع حاکم: `docs/MAZANDASHT_SPEC_FA.md` (در موارد تعارض بر `PROJECT_SPEC.md` مقدم است — DEC-NEW-001)
 
-## Non-negotiable financial rules
+## وضعیت فعلی (2026-11-17)
 
-- Store monetary values as integer Rial internally unless a formally approved migration decision says otherwise.
-- Convert Toman to Rial exactly using 10 Rial per Toman; never use binary floating-point for money.
-- Show the selected unit clearly on every entry and report. A display-unit change must not mutate stored amounts.
-- Posted journal entries must balance debit and credit. Corrections must be traceable reversals/adjustments, not silent deletion.
-- Financial statements must be calculated from validated posted ledger data, not mock values or invoice status labels.
-- Operational events must post to accounting only through explicit, tested business rules.
+| بخش | وضعیت | شاهد |
+|---|---|---|
+| اسکیمای دیتابیس (تمام موجودیت‌های فصل ۱۸) | IMPLEMENTED + TESTED | `database/schema/schema_v001.sql` + `tools/verify_database.py` → **18/18 PASS** |
+| داده پایه (کدها، P01/P02، بانک‌ها، نقش‌ها) | IMPLEMENTED + TESTED | `database/seed/seed_v001.sql` |
+| هسته دامنه C# (پول/وزن/تراز/تسویه/کدینگ/امنیت) | IMPLEMENTED (NOT RUN) | `src/Mazandasht.Domain` — ساخت روی Windows لازم است |
+| پوسته WPF (داشبورد، دکمه +، نمایشگر دوم) | IMPLEMENTED (NOT RUN) | `src/Mazandasht.Presentation` |
+| تست‌های C# (xUnit) | NOT RUN | `src/Mazandasht.Tests` — اجرا روی Windows |
+| فایل‌های Excel مرجع | BLOCKED-01 | در مخزن و Google Drive یافت نشد؛ مالک باید ارائه کند |
 
-## Start here
+جزئیات: `reports/INITIAL_REPOSITORY_AUDIT.md` و `reports/BASELINE.md`.
 
-1. Read `START_HERE_FA.md`.
-2. Read `docs/agent-system/UPLOAD_FIRST_ORDER_FA.md`.
-3. Read `docs/agent-system/SOURCE_OF_TRUTH_AND_CONFLICT_ORDER_FA.md`.
-4. Confirm the target repository and branch before making changes.
-5. Run only Prompt 00 from `prompts/`. Stop and review its report before Prompt 01.
+## ساخت روی Windows
 
-## Repository map
+1. Visual Studio 2019+ با .NET Framework 4.8 SDK و WPF را نصب کنید.
+2. `src/Mazandasht.sln` را باز و Build کنید (x64).
+3. تست‌ها: `dotnet test src/Mazandasht.Tests` (یا Test Explorer).
+4. دیتابیس اولیه از `database/schema/schema_v001.sql` + `database/seed/seed_v001.sql` ساخته می‌شود (MigrationRunner).
 
-- `desktop/` — executable Python desktop baseline and tests.
-- `docs/` — requirements, workflows, data model, architecture, finance, reporting, security and release rules.
-- `prompts/` — ordered AI coding-agent prompts 00–35.
-- `contracts/` — traceability, invariants, decisions, implementation status and release gates.
-- `reference-inputs/` — source documents retained for reconciliation; they are not automatically higher authority than the conflict-order policy.
-- `.github/` — issue, PR and test workflow templates.
+## راستی‌آزمایی دیتابیس (بدون .NET)
 
-## Suggested workflow
+```bash
+python3 tools/verify_database.py   # 18 invariant tests on real SQLite
+```
 
-Use small, reviewable commits and a feature branch. The agent must report changed files, tests actually run, test results, unresolved questions, and evidence. Never claim a feature is complete because a page or button exists.
+## قوانین مالی غیرقابل‌مذاکره
+
+- مبالغ فقط به‌صورت ریال صحیح ذخیره می‌شوند؛ هرگز float برای پول استفاده نشود.
+- تبدیل تومان به ریال دقیقاً با ضریب ۱۰؛ تغییر واحد نمایش نباید مقدار ذخیره‌شده را تغییر دهد.
+- سند مالی قطعی باید متوازن باشد (بدهکار = بستانکار)؛ اصلاح فقط با برگشت/اصلاحیه، نه حذف یا ویرایش بی‌ردپا.
+- موجودی و مانده‌ها از دفترهای گردش مشتق می‌شوند؛ ویرایش مستقیم مانده ممنوع.
+- گزارش‌ها فقط از داده واقعی دفترکل ساخته می‌شوند؛ داده نمونه در محیط عملیاتی ممنوع.
+- دیتابیس زنده هرگز در پوشه Google Drive Sync قرار نمی‌گیرد؛ فقط Backup می‌تواند آنجا باشد.
+
+## نقشه مخزن
+
+- `src/` — سورس C# لایه‌بندی‌شده (Domain / Application / Persistence / Infrastructure / Presentation / Tests)
+- `database/` — اسکیما و سید نسخه‌دار SQLite
+- `docs/` — سند مرجع مازندشت، دفتر تصمیمات، مشخصات قدیمی
+- `tools/` — ابزار راستی‌آزمایی دیتابیس
+- `reports/` — گزارش ممیزی، خط مبنا و دفتر اجرا
+- `ALL_PROMPTS_00_TO_35_FULL_FA.md` — متن یکپارچه پرامپت‌های قدیمی (برای تاریخچه؛ فناوری آن Python/Tkinter بود و با DEC-NEW-001 جایگزین شد)
+
+## هشدار استقرار
+
+Windows 8.1 دیگر پشتیبانی امنیتی عمومی ندارد؛ این محدودیت باید در مستندات استقرار ذکر شود (فصل ۳ سند مرجع). ادعای سازگاری فقط پس از آزمون روی Windows 8.1 Update x64 واقعی پذیرفته است.

@@ -1,0 +1,53 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <!-- Brand: dark green logo #075E1E (Spec ch. 12) -->
+    <SolidColorBrush x:Key="BrandBrush" Color="#075E1E"/>
+    <SolidColorBrush x:Key="BrandLightBrush" Color="#0E7A2A"/>
+    <SolidColorBrush x:Key="ApprovedBrush" Color="#454545"/>
+    <SolidColorBrush x:Key="GlassBrush" Color="#CCFFFFFF"/>
+    <SolidColorBrush x:Key="TextBrush" Color="#1A1A1A"/>
+    <SolidColorBrush x:Key="MutedTextBrush" Color="#666666"/>
+
+    <!-- Bank operation colors (Spec ch. 12) -->
+    <SolidColorBrush x:Key="OpDepositBrush" Color="#E2F0D9"/>
+    <SolidColorBrush x:Key="OpWithdrawalBrush" Color="#FCE4D6"/>
+    <SolidColorBrush x:Key="OpFeeBrush" Color="#E4DFEC"/>
+    <SolidColorBrush x:Key="OpTransferBrush" Color="#E7E6E6"/>
+    <SolidColorBrush x:Key="OpChequePayBrush" Color="#FFF2CC"/>
+    <SolidColorBrush x:Key="OpChequeRecBrush" Color="#DDEBF7"/>
+
+    <FontFamily x:Key="PersianFont">Segoe UI, Tahoma</FontFamily>
+
+    <!-- Glass button (controlled glassmorphism) -->
+    <Style x:Key="GlassButtonStyle" TargetType="Button">
+        <Setter Property="Background" Value="{StaticResource GlassBrush}"/>
+        <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
+        <Setter Property="FontFamily" Value="{StaticResource PersianFont}"/>
+        <Setter Property="Padding" Value="14,8"/>
+        <Setter Property="Margin" Value="4"/>
+        <Setter Property="BorderBrush" Value="#33000000"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Button">
+                    <Border Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}"
+                            CornerRadius="10" Padding="{TemplateBinding Padding}">
+                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- KPI card -->
+    <Style x:Key="KpiCardStyle" TargetType="Border">
+        <Setter Property="Background" Value="{StaticResource GlassBrush}"/>
+        <Setter Property="CornerRadius" Value="14"/>
+        <Setter Property="Padding" Value="16"/>
+        <Setter Property="Margin" Value="6"/>
+        <Setter Property="BorderBrush" Value="#22000000"/>
+        <Setter Property="BorderThickness" Value="1"/>
+    </Style>
+</ResourceDictionary>
