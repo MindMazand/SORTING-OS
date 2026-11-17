@@ -27,7 +27,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SCHEMA = os.path.join(ROOT, "database", "schema", "schema_v001.sql")
 SEED = os.path.join(ROOT, "database", "seed", "seed_v001.sql")
 MIGRATION_DIR = os.path.join(ROOT, "database", "migrations")
-SCHEMA_VERSION = 2
+SCHEMA_VERSION = 3
 
 RESULTS = []
 
@@ -366,10 +366,11 @@ def main():
 
     def t_v002_migration_applied():
         ver = con.execute("SELECT MAX(version) FROM schema_migrations").fetchone()[0]
-        assert ver == 2, f"expected schema version 2, got {ver}"
-        row = con.execute(
-            "SELECT name FROM schema_migrations WHERE version = 2").fetchone()
-        assert row and "v002" in row[0], f"v002 record: {row}"
+        assert ver == SCHEMA_VERSION, f"expected schema version {SCHEMA_VERSION}, got {ver}"
+        for want in (2, 3):
+            row = con.execute(
+                "SELECT name FROM schema_migrations WHERE version = ?", (want,)).fetchone()
+            assert row and f"v00{want}" in row[0], f"v00{want} record: {row}"
 
     def t_v002_rebuild_preserved_data():
         """The two rebuilt tables must keep every pre-existing row and id."""

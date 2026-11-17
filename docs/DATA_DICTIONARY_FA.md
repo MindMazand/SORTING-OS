@@ -4,8 +4,8 @@
 > از اسکیمای واقعی تولید می‌شود؛ اگر با کد اختلاف داشت، کد درست است و این فایل
 > باید دوباره تولید شود. مبنای فصل ۱۸ سند اصلی (Data Dictionary).
 
-- نسخه اسکیما: **v2**
-- تعداد جدول: **62** · ویو: **4** · تریگر: **13** · ایندکس: **17**
+- نسخه اسکیما: **v3**
+- تعداد جدول: **62** · ویو: **4** · تریگر: **15** · ایندکس: **23**
 
 ## قواعد ثابت (روی همه جدول‌ها)
 
@@ -28,6 +28,8 @@
 ## تریگرهای محافظ
 
 - `trg_alloc_single_target_v002`
+- `trg_bank_direction_insert_v003`
+- `trg_bank_direction_update_v003`
 - `trg_basket_transfer_party_v002`
 - `trg_basket_transfer_v002`
 - `trg_cheque_due_after_issue_upd_v002`
@@ -142,6 +144,7 @@
 | `fee_rial` | INTEGER | الزامی | `0` | **ACTIVE** — Separate from deposit/withdrawal; posts to bank expense. |
 | `tracking_number` | TEXT | اختیاری |  |  |
 | `reported_balance_known` | INTEGER | الزامی | `0` | **ACTIVE** — 0 = the statement did not report a balance. Never render as "balance was 0". |
+| `direction` | TEXT | اختیاری |  | **ACTIVE** — IN/OUT kept in sync with deposit/withdrawal by trigger; never re-derived in reports. |
 
 کلیدهای خارجی: `approved_by` → `users.id` · `created_by` → `users.id` · `sub_group_id` → `sub_groups.id` · `main_group_id` → `main_groups.id` · `txn_type_id` → `txn_types.id` · `party_id` → `parties.id` · `bank_account_id` → `bank_accounts.id`
 
@@ -172,8 +175,11 @@
 | `description` | TEXT | الزامی | `''` |  |
 | `counterparty_party_id` | INTEGER | اختیاری |  |  |
 | `created_at` | TEXT | الزامی | `datetime('now')` |  |
+| `source_key` | TEXT | اختیاری |  |  |
+| `from_warehouse_id` | INTEGER | اختیاری |  |  |
+| `to_warehouse_id` | INTEGER | اختیاری |  |  |
 
-کلیدهای خارجی: `counterparty_party_id` → `parties.id` · `party_id` → `parties.id` · `basket_id` → `baskets.id`
+کلیدهای خارجی: `to_warehouse_id` → `warehouses.id` · `from_warehouse_id` → `warehouses.id` · `counterparty_party_id` → `parties.id` · `party_id` → `parties.id` · `basket_id` → `baskets.id`
 
 ### `baskets`  — 1 ردیف در دیتابیس تازه
 
@@ -218,6 +224,8 @@
 | `due_date_shamsi` | TEXT | اختیاری |  | **ACTIVE** — Maturity date used by unpaid-cheque reports. |
 | `sayad_id` | TEXT | اختیاری |  |  |
 | `registry_id` | INTEGER | اختیاری |  |  |
+| `source_key` | TEXT | اختیاری |  |  |
+| `doc_number` | TEXT | اختیاری |  |  |
 
 کلیدهای خارجی: `registry_id` → `cheques_registry.id` · `beneficiary_party_id` → `parties.id` · `bank_account_id` → `bank_accounts.id`
 
@@ -490,7 +498,7 @@
 | `basket_type` | TEXT | الزامی | `''` |  |
 | `basket_count` | INTEGER | الزامی | `0` |  |
 | `returned_basket_count` | INTEGER | الزامی | `0` |  |
-| `weigh_grams` | INTEGER | الزامی | `0` |  |
+| `weigh_grams` | INTEGER | الزامی | `0` | **LEGACY** — Pre-template column kept for old rows; do not write new values. |
 | `net_grams` | INTEGER | الزامی | `0` |  |
 | `rounding_mode` | TEXT | الزامی | `''` |  |
 | `manual_loss_grams` | INTEGER | الزامی | `0` |  |
@@ -511,8 +519,19 @@
 | `created_at` | TEXT | الزامی | `datetime('now')` |  |
 | `origin_place` | TEXT | اختیاری |  |  |
 | `destination_place` | TEXT | اختیاری |  |  |
+| `source_key` | TEXT | اختیاری |  |  |
+| `product_id` | INTEGER | اختیاری |  |  |
+| `warehouse_id` | INTEGER | اختیاری |  |  |
+| `basket_id` | INTEGER | اختیاری |  |  |
+| `gross_grams` | INTEGER | اختیاری |  | **ACTIVE** — Template name; the legacy weigh_grams column is superseded. |
+| `consumed_baskets` | INTEGER | اختیاری |  |  |
+| `custody_returned_baskets` | INTEGER | اختیاری |  |  |
+| `partner_share_percent` | REAL | اختیاری |  |  |
+| `rounding_unit_grams` | INTEGER | اختیاری |  |  |
+| `purchase_aggregation_id` | INTEGER | اختیاری |  |  |
+| `description` | TEXT | اختیاری |  |  |
 
-کلیدهای خارجی: `party_id` → `parties.id` · `partnership_id` → `partnerships.id`
+کلیدهای خارجی: `purchase_aggregation_id` → `purchase_aggregations.id` · `basket_id` → `baskets.id` · `warehouse_id` → `warehouses.id` · `product_id` → `products.id` · `party_id` → `parties.id` · `partnership_id` → `partnerships.id`
 
 ### `partnerships`  — 0 ردیف در دیتابیس تازه
 
@@ -547,6 +566,8 @@
 | `sales_invoice_id` | INTEGER | اختیاری |  |  |
 | `amount_rial` | INTEGER | الزامی | `0` |  |
 | `source_key` | TEXT | اختیاری |  |  |
+| `instrument_type` | TEXT | اختیاری |  |  |
+| `description` | TEXT | اختیاری |  |  |
 
 کلیدهای خارجی: `sales_invoice_id` → `sales_invoices.id` · `purchase_invoice_id` → `purchase_invoices.id` · `payment_id` → `payments.id`
 
@@ -710,8 +731,9 @@
 | `commission_rial` | INTEGER | الزامی | `0` |  |
 | `other_costs_rial` | INTEGER | الزامی | `0` |  |
 | `net_rial` | INTEGER | الزامی | `0` |  |
+| `sorting_output_id` | INTEGER | اختیاری |  |  |
 
-کلیدهای خارجی: `packaging_id` → `packaging_types.id` · `grade_id` → `grades.id` · `product_id` → `products.id` · `invoice_id` → `sales_invoices.id`
+کلیدهای خارجی: `sorting_output_id` → `sorting_outputs.id` · `packaging_id` → `packaging_types.id` · `grade_id` → `grades.id` · `product_id` → `products.id` · `invoice_id` → `sales_invoices.id`
 
 ### `sales_invoices`  — 0 ردیف در دیتابیس تازه
 
@@ -735,7 +757,7 @@
 
 کلیدهای خارجی: `approved_by` → `users.id` · `created_by` → `users.id` · `sorting_batch_id` → `sorting_batches.id` · `lot_id` → `lots.id` · `party_id` → `parties.id`
 
-### `schema_field_notes`  — 16 ردیف در دیتابیس تازه
+### `schema_field_notes`  — 21 ردیف در دیتابیس تازه
 
 | ستون | نوع | الزام | پیش‌فرض | یادداشت |
 |---|---|---|---|---|
@@ -745,7 +767,7 @@
 | `status` | TEXT | الزامی | `'ACTIVE'` |  |
 | `note` | TEXT | الزامی | `''` |  |
 
-### `schema_migrations`  — 2 ردیف در دیتابیس تازه
+### `schema_migrations`  — 3 ردیف در دیتابیس تازه
 
 | ستون | نوع | الزام | پیش‌فرض | یادداشت |
 |---|---|---|---|---|
@@ -773,12 +795,15 @@
 | `output_grams` | INTEGER | الزامی | `0` |  |
 | `waste_grams` | INTEGER | الزامی | `0` |  |
 | `process_loss_grams` | INTEGER | الزامی | `0` |  |
-| `variance_grams` | INTEGER | الزامی | `0` |  |
+| `variance_grams` | INTEGER | الزامی | `0` | **DERIVED** — Must equal input - (output + waste + process_loss); approved only inside tolerance. |
 | `tolerance_grams` | INTEGER | الزامی | `0` |  |
 | `status` | TEXT | الزامی | `'DRAFT'` |  |
 | `created_by` | INTEGER | اختیاری |  |  |
 | `approved_by` | INTEGER | اختیاری |  |  |
 | `created_at` | TEXT | الزامی | `datetime('now')` |  |
+| `source_key` | TEXT | اختیاری |  |  |
+| `date_shamsi` | TEXT | اختیاری |  |  |
+| `description` | TEXT | اختیاری |  |  |
 
 کلیدهای خارجی: `approved_by` → `users.id` · `created_by` → `users.id` · `lot_id` → `lots.id`
 
@@ -975,8 +1000,9 @@
 | `packaging_id` | INTEGER | اختیاری |  |  |
 | `package_count` | INTEGER | الزامی | `0` | **OPTIONAL** — 0 means "not recorded"; use has_packages in v_weigh_ticket_import. |
 | `receipt_number` | TEXT | اختیاری |  | **OPTIONAL** — Blank means "no receipt issued", not receipt 0. |
+| `warehouse_id` | INTEGER | اختیاری |  | **ACTIVE** — Which warehouse received the goods. Absent before v003 — the weighing could not say where it went. |
 
-کلیدهای خارجی: `packaging_id` → `packaging_types.id` · `approved_by` → `users.id` · `created_by` → `users.id` · `basket_id` → `baskets.id` · `product_id` → `products.id` · `sub_group_id` → `sub_groups.id` · `party_id` → `parties.id` · `operation_id` → `operations.id`
+کلیدهای خارجی: `warehouse_id` → `warehouses.id` · `packaging_id` → `packaging_types.id` · `approved_by` → `users.id` · `created_by` → `users.id` · `basket_id` → `baskets.id` · `product_id` → `products.id` · `sub_group_id` → `sub_groups.id` · `party_id` → `parties.id` · `operation_id` → `operations.id`
 
 ### `work_groups`  — 1 ردیف در دیتابیس تازه
 
@@ -994,15 +1020,21 @@
 - `ix_parties_nature`
 - `ix_pil_weigh`
 - `ix_products_active`
+- `ix_sil_sortout`
 - `ix_stock_key`
 - `ix_user_keys_user`
 - `ix_weigh_party`
 - `ix_weigh_status`
+- `ix_weigh_warehouse`
 - `ux_alloc_source_key`
 - `ux_bank_source_key`
+- `ux_basket_source_key`
 - `ux_cheques_sayad`
+- `ux_cheques_source_key`
 - `ux_journal_source_key`
 - `ux_parties_economic_code`
+- `ux_partnership_source_key`
 - `ux_purchase_source_key`
 - `ux_sales_source_key`
+- `ux_sorting_source_key`
 - `ux_weigh_source_key`
