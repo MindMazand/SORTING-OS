@@ -125,8 +125,8 @@ namespace Mazandasht.Application.Import
                 CheckMerges(sheet, result);
 
                 // -- stage 4: validate ---------------------------------------
-                var rowNumber = template.DataStartRow;
-                var lastRow = Math.Max(sheet.MaxRow, template.DataStartRow);
+                var rowNumber = LastHeaderRow(template, sheet) + 1;
+                var lastRow = Math.Max(sheet.MaxRow, rowNumber);
                 while (rowNumber <= lastRow)
                 {
                     var allBlank = mapping.Values.All(col => sheet.Cell(rowNumber, col).IsBlank);
@@ -188,9 +188,45 @@ namespace Mazandasht.Application.Import
             return bestScore < 0.5 ? null : best;
         }
 
-        /// <summary>Match by header NAME. English row wins; Persian row is the
-        /// fallback. A position-based mapping would write purchase weights into
-        /// discount columns the moment a user reorders anything.</summary>
+        /// <summary>
+        /// The last row that actually holds field labels.
+        ///
+        /// Counting header rows by POSITION is wrong in both directions: the
+        /// two-row English+Persian layout puts data at row 3, and the owner's
+        /// real workbooks (tests/fixtures/owner_templates) have ONE Persian
+        /// header row, so their data starts at row 2. Using the constant
+        /// DataStartRow silently skipped the owner's first data row on every
+        /// real file. Asking the sheet which rows hold labels answers both.
+        /// </summary>
+        public static int LastHeaderRow(ImportTemplate template, XlsxSheet sheet)
+        {
+            var labels = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var f in template.Fields)
+            {
+                labels.Add(f.NameEn);
+                labels.Add(f.NameFa);
+            }
+            var last = 0;
+            foreach (var rowNo in new[] { template.HeaderRowEn, template.HeaderRowFa })
+            {
+                if (rowNo > Math.Max(sheet.MaxRow, 1)) continue;
+                for (var c = 1; c <= Math.Min(sheet.MaxCol, 200); c++)
+                {
+                    var text = sheet.Cell(rowNo, c).Text.Trim();
+                    if (text.Length > 0 && labels.Contains(text))
+                    {
+                        if (rowNo > last) last = rowNo;
+                        break;
+                    }
+                }
+            }
+            return last > 0 ? last : template.HeaderRowEn;
+        }
+
+        /// <summary>Match by header NAME, in either language, in either header
+        /// row. A position-based mapping would write purchase weights into
+        /// discount columns the moment a user reorders anything; requiring the
+        /// English row would reject the owner's real files outright.</summary>
         public static Dictionary<string, int> MapHeaders(ImportTemplate template, XlsxSheet sheet,
                                                          List<string> unmatched)
         {
@@ -203,9 +239,9 @@ namespace Mazandasht.Application.Import
                 {
                     var text = sheet.Cell(rowNo, c).Text.Trim();
                     if (text.Length == 0) continue;
-                    var field = rowNo == template.HeaderRowEn
-                        ? template.ByEn(text)
-                        : template.ByFa(text);
+                    // either language in either row: the owner's `داده‌ها` sheet
+                    // is Persian-only, while the English labels live in `فرهنگ داده`
+                    var field = template.ByEn(text) ?? template.ByFa(text);
                     if (field != null && !mapping.ContainsKey(field.NameEn) && !used.Contains(c))
                     {
                         mapping[field.NameEn] = c;

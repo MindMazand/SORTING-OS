@@ -217,7 +217,7 @@ namespace Mazandasht.Application.Import
                 F("SourceInvoiceCode", "کد فاکتور منبع", FieldKind.Code, true, "source_key", maxLen: 60),
                 F("DateShamsi", "تاریخ شمسی", FieldKind.Shamsi, true, "date_shamsi"),
                 F("BuyerCode", "کد خریدار", FieldKind.Code, true, "party_id", lookup: "parties:code"),
-                F("LotCode", "کد محصوله", FieldKind.Code, true, "lot_id", lookup: "lots:code"),
+                F("LotCode", "کد محموله", FieldKind.Code, true, "lot_id", lookup: "lots:code"),
                 F("SortOutputCode", "کد خروجی سورت", FieldKind.Code, false, "sorting_output_id",
                   lookup: "sorting_outputs:code"),
                 F("ProductCode", "کد محصول", FieldKind.Code, true, "product_id", lookup: "products:code"),

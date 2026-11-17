@@ -19,6 +19,7 @@ STEPS = [
     ("اسکیما و داده", ["tools/verify_database.py"]),
     ("موتور واردسازی (Python)", ["tools/test_import.py"]),
     ("زنجیره ۱۱ قالب سرتاسری", ["tools/test_chain.py"]),
+    ("قالب‌های واقعی مالک (فایل‌های Drive)", ["tools/test_owner_templates.py"]),
     ("قرارداد C# ↔ Python", ["tools/check_contract_parity.py"]),
     ("ستون‌های C# ↔ اسکیما", ["tools/check_csharp_schema.py"]),
     ("ستون‌های قرارداد ↔ اسکیما", ["tools/check_contract_schema.py"]),

@@ -180,18 +180,62 @@ def _find_data_sheet(wb: Workbook, notes: List[str]) -> Optional[str]:
 # ---------------------------------------------------------------------------
 # Stage 3 — map headers
 # ---------------------------------------------------------------------------
+def _header_row_candidates(tpl: C.Template, sh) -> List[int]:
+    """Which rows may hold a header.
+
+    The contract originally assumed TWO rows: English then Persian. The owner's
+    real workbooks under `داده‌ها` carry a SINGLE Persian header row — the
+    English row only exists in the `فرهنگ داده` sheet. Importing
+    `01_Parties.xlsx` from Drive therefore failed with "required headers are
+    missing" while every column was in fact present and correctly labelled.
+
+    Accepting either language in either of the first two rows costs nothing and
+    removes an assumption the fixtures had quietly baked in.
+    """
+    rows = []
+    for row_no in (tpl.header_row_en, tpl.header_row_fa):
+        if row_no not in rows and row_no <= max(sh.max_row, 1):
+            rows.append(row_no)
+    return rows
+
+
+def _last_header_row(tpl: C.Template, sh) -> int:
+    """The last row that actually holds header labels.
+
+    Counting headers by POSITION is wrong in both directions: the contract's
+    two-row layout puts data at row 3, and the owner's real single-header files
+    put data at row 2. Asking the file which rows contain field labels answers
+    both, and cannot silently skip the owner's first data row.
+    """
+    labels = set()
+    for f in tpl.fields:
+        labels.add(f.name_en.lower())
+        labels.add(f.name_fa)
+    last = 0
+    for row_no in _header_row_candidates(tpl, sh):
+        for c in range(1, min(sh.max_col, 200) + 1):
+            txt = sh.cell(row_no, c).text.strip()
+            if txt and txt.lower() in labels:
+                last = max(last, row_no)
+                break
+    return last or tpl.header_row_en
+
+
 def map_headers(tpl: C.Template, sh) -> Tuple[Dict[str, int], List[str]]:
-    """Match by header NAME. English row wins; Persian row is the fallback and
-    is also used to cross-check that the two rows agree."""
+    """Match by header NAME, in either language, in either header row.
+
+    English row first so a bilingual file prefers its English labels; the
+    Persian row is the fallback and also catches a single-header file.
+    """
     mapping: Dict[str, int] = {}
     used = set()
 
-    for row_no in (tpl.header_row_en, tpl.header_row_fa):
+    for row_no in _header_row_candidates(tpl, sh):
         for c in range(1, min(sh.max_col, 200) + 1):
             txt = sh.cell(row_no, c).text.strip()
             if not txt:
                 continue
-            f = tpl.by_en(txt) if row_no == tpl.header_row_en else tpl.by_fa(txt)
+            f = tpl.by_en(txt) or tpl.by_fa(txt)
             if f and f.name_en not in mapping and c not in used:
                 mapping[f.name_en] = c
                 used.add(c)
@@ -385,8 +429,14 @@ def parse_file(path: str, expected: Optional[str] = None) -> ParseResult:
 
         _check_merges(sh, res)
 
-        row_no = tpl.data_start_row
-        while row_no <= max(sh.max_row, tpl.data_start_row):
+        # Where data starts depends on how many header rows the file actually
+        # has, not on a constant. The contract's data_start_row = 3 assumes the
+        # two-row English+Persian layout; the owner's real workbooks have ONE
+        # Persian header row, so their data begins at row 2. Using the constant
+        # silently skipped the owner's first data row on every real file.
+        data_start = _last_header_row(tpl, sh) + 1
+        row_no = data_start
+        while row_no <= max(sh.max_row, data_start):
             cells = [sh.cell(row_no, c) for c in mapping.values()]
             if all(c.is_blank for c in cells):
                 res.ignored_blank_rows += 1

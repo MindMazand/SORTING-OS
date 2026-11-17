@@ -210,7 +210,7 @@ SALES_INVOICES = Template(
         _f("SourceInvoiceCode", "کد فاکتور منبع", CODE, True, "source_key", max_len=60),
         _f("DateShamsi", "تاریخ شمسی", SHAMSI, True, "date_shamsi"),
         _f("BuyerCode", "کد خریدار", CODE, True, "party_id", lookup="parties:code"),
-        _f("LotCode", "کد محصوله", CODE, True, "lot_id", lookup="lots:code"),
+        _f("LotCode", "کد محموله", CODE, True, "lot_id", lookup="lots:code"),
         _f("SortOutputCode", "کد خروجی سورت", CODE, False, "sorting_output_id",
            lookup="sorting_outputs:code"),
         _f("ProductCode", "کد محصول", CODE, True, "product_id", lookup="products:code"),
