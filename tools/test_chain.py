@@ -118,7 +118,7 @@ def main():
     # 05 — sales invoice from the same lot. Must NOT move stock.
     before = con.execute("SELECT COUNT(*) FROM stock_movements").fetchone()[0]
     step(con, "SALES_INVOICES", "05_SalesInvoices.xlsx", [
-        ["SI-1", "1403/05/03", "C002", "LOT001", "", "PB-CHAIN",
+        ["SI-1", "1403/05/03", "C002", "WT-1", "", "PB-CHAIN",
          "1000.250", "95000", "0", "0", "0", "0", "فروش زنجیره"],
     ])
     after = con.execute("SELECT COUNT(*) FROM stock_movements").fetchone()[0]
@@ -130,7 +130,9 @@ def main():
         # tolerance 100 -> balanced. GR-ORANGE-1 and PK-CRATE come from the
         # seed; inventing a grade code here would only prove unknown codes are
         # rejected, which another test already proves.
-        ["SRT-1", "1403/05/06", "LOT001", "W01", "5000", "PB-CHAIN",
+        # Quote the WEIGH TICKET NUMBER, not the invisible generated lot code.
+        # That is what the owner can read off their own paper (DEC-NEW-033).
+        ["SRT-1", "1403/05/06", "WT-1", "W01", "5000", "PB-CHAIN",
          "GR-ORANGE-1", "PK-CRATE", "W01", "4000", "100", "600", "300", "100", ""],
     ])
 

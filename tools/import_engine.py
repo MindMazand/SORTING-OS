@@ -111,6 +111,9 @@ def file_sha256(path: str) -> str:
 # the settlements template could never import at all.
 VIRTUAL_LOOKUPS = {
     "invoices:doc_number": "v_invoice_lookup",
+    # DEC-NEW-033: the lot code is generated and never shown to the owner, so
+    # a lot is also findable by the weigh ticket number that IS on their paper.
+    "lots:code": "v_lot_lookup",
 }
 
 
@@ -119,8 +122,11 @@ def _lookup_row(con, spec: str, code: str):
     for a virtual lookup."""
     view = VIRTUAL_LOOKUPS.get(spec)
     if view:
+        # v_invoice_lookup keys on doc_number; v_lot_lookup on `ref`. Both
+        # answer the same question: "given the text the owner typed, which row?"
+        column = "doc_number" if view == "v_invoice_lookup" else "ref"
         row = con.execute(
-            f"SELECT id, kind FROM {view} WHERE doc_number = ?", (code,)).fetchone()
+            f"SELECT id, kind FROM {view} WHERE {column} = ? LIMIT 1", (code,)).fetchone()
         return (row[0], row[1]) if row else (None, None)
     table, _, column = spec.partition(":")
     column = column or "code"

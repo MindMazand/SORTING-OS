@@ -137,6 +137,31 @@ def main():
             # required to know them. Report only, do not fail.
             print(f"NOTE  {code}: ستون {table}.{col} توسط قرارداد پر نمی‌شود")
 
+    # Every lookup spec the contract declares must actually resolve. A lookup
+    # pointing at a table that does not exist is invisible until a real file is
+    # imported; `invoices:doc_number` sat broken for two stages that way.
+    VIRTUALS = {"invoices:doc_number": "v_invoice_lookup",
+                "lots:code": "v_lot_lookup"}
+    views = {r[0] for r in con.execute(
+        "SELECT name FROM sqlite_master WHERE type IN ('table','view')")}
+    specs = sorted({f.lookup for t in C.ALL.values() for f in t.fields if f.lookup})
+    for spec in specs:
+        home = VIRTUALS.get(spec)
+        if home is None:
+            table, _, column = spec.partition(":")
+            column = column or "code"
+            home = table
+        elif home == "v_invoice_lookup":
+            column = "doc_number"
+        else:
+            column = "ref"
+        if home not in views:
+            fail(f"مرجع «{spec}» به {home} اشاره می‌کند که وجود ندارد")
+        elif column not in [r[1] for r in con.execute(f"PRAGMA table_info({home})")]:
+            fail(f"مرجع «{spec}»: ستون {column} در {home} نیست")
+    if not FAILURES:
+        print(f"PASS  هر {len(specs)} مرجع قرارداد در اسکیما قابل حل است")
+
     con.close()
     print()
     print(f"بررسی‌شده: {checked} ستون قرارداد در {len(C.ALL)} قالب")

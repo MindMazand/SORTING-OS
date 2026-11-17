@@ -543,9 +543,11 @@ namespace Mazandasht.Application.Import
             // know which side it is on. v_invoice_lookup answers that in one
             // place, so a number can never be attached to the wrong kind of
             // invoice by searching only one table.
-            var isPurchase = _store.Lookup("v_invoice_lookup:kind",
-                                           row.GetString("InvoiceNumber")) != null
-                             && _store.LookupKind(row.GetString("InvoiceNumber")) == "PURCHASE";
+            // `Lookup` returns an ID and `kind` is not an ID: the old test
+            // looked up the string "PURCHASE" in the id column, which is always
+            // null, so every settlement silently became a SALES allocation.
+            // Only LookupKind can answer this.
+            var isPurchase = _store.LookupKind(row.GetString("InvoiceNumber")) == "PURCHASE";
             return _store.Insert("payment_allocations", new Dictionary<string, object>
             {
                 { "payment_id", ids["PaymentDocNumber"] },

@@ -27,7 +27,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SCHEMA = os.path.join(ROOT, "database", "schema", "schema_v001.sql")
 SEED = os.path.join(ROOT, "database", "seed", "seed_v001.sql")
 MIGRATION_DIR = os.path.join(ROOT, "database", "migrations")
-SCHEMA_VERSION = 4
+SCHEMA_VERSION = 5
 
 RESULTS = []
 
@@ -795,6 +795,47 @@ def main():
         ).fetchone()[0]
         assert 'amount_rial >= 0' in sql, "rebuilt allocations table lost its money check"
 
+    def t_v005_lot_lookup():
+        """A lot must be findable by the number the owner can actually see.
+
+        The engine generates LOT001 and never shows it to anyone; the weigh
+        ticket number is on the paper in the owner's hand. Without this view the
+        sales and sorting templates ask for a code that cannot be obtained.
+        """
+        con2 = con
+        # Build on a private database: this test creates rows it must also
+        # remove, and a shared database with FK checks on makes cleanup order
+        # matter in ways that have nothing to do with what is being tested.
+        con2 = build_db(os.path.join(tempfile.mkdtemp(prefix="v005_"), "l.db"))
+        con2.execute("PRAGMA foreign_keys = ON")
+        for cleanup in (
+                "DELETE FROM lots WHERE code='LOT777'",
+                "DELETE FROM weigh_tickets WHERE code='WT777'",
+                "DELETE FROM parties WHERE code='C777'"):
+            con2.execute(cleanup)
+        con2.commit()
+        con2.execute("INSERT INTO parties(code,display_name,nature,party_kind,"
+                     "party_kind_confirmed) VALUES('C777','lot test','C','PERSON',1)")
+        con2.execute("INSERT INTO weigh_tickets(code,doc_number,direction,party_id,"
+                     "status) VALUES('WT777','WS-777','IN',"
+                     "(SELECT id FROM parties WHERE code='C777'),'DRAFT')")
+        con2.execute("INSERT INTO lots(code,weigh_ticket_id,quantity_grams,status) "
+                     "VALUES('LOT777',(SELECT id FROM weigh_tickets WHERE code='WT777'),"
+                     "1000,'OPEN')")
+        lot_id = con2.execute("SELECT id FROM lots WHERE code='LOT777'").fetchone()[0]
+
+        by_code = con2.execute(
+            "SELECT id FROM v_lot_lookup WHERE ref='LOT777'").fetchone()
+        by_ticket = con2.execute(
+            "SELECT id FROM v_lot_lookup WHERE ref='WS-777'").fetchone()
+        assert by_code and by_code[0] == lot_id, by_code
+        assert by_ticket and by_ticket[0] == lot_id, by_ticket
+        assert con2.execute(
+            "SELECT kind FROM v_lot_lookup WHERE ref='WS-777'").fetchone()[0] \
+            == "WEIGH_TICKET"
+
+        con2.close()
+
     def t_v004_lookup_columns():
         """v004 exists because tools/check_csharp_schema.py found three
         references that could not resolve. Each is now proven by behaviour."""
@@ -896,6 +937,7 @@ def main():
         ("v002: fresh install shape == upgraded install shape", t_v002_fresh_equals_upgraded),
         ("v002: rebuilt tables kept their CHECK constraints", t_v002_no_rebuild_loss),
         ("v004: doc_number, sorting output code, invoice lookup view", t_v004_lookup_columns),
+        ("v005: lot با کد lot یا شماره باسکول پیدا می‌شود", t_v005_lot_lookup),
     ]
     for name, fn in tests:
         check(name, fn)

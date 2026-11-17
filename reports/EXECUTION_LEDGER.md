@@ -167,3 +167,28 @@ Writing it found two more things:
   * **The lot code is generated (`LOT001`) and the owner never sees it**, yet
     the sales and sorting sheets must quote it. That is a real product gap, not
     a test artefact; it is recorded in the decision log rather than papered over.
+
+### NEW-08 — the invisible lot code, and the C# settlement bug it exposed
+
+`v005_lot_lookup.sql` closes DEC-NEW-033. The weighing import generates `LOT001`
+and shows it to nobody, while sales and sorting must quote it. The owner would
+have hit this on their first real sales file. A lot is now also findable by the
+**weigh ticket number**, which is printed on the paper in their hand.
+
+`test_chain.py` deliberately quotes the ticket number now, not the lot code, so
+the path that is tested is the path the owner has.
+
+Auditing the C# port against the same findings produced one more real defect:
+
+    var isPurchase = _store.Lookup("v_invoice_lookup:kind", invoice) != null
+                     && _store.LookupKind(invoice) == "PURCHASE";
+
+`v_invoice_lookup:kind` is not an allowed lookup spec, so that call **threw**;
+and `Lookup` returns an id, so it could never have been non-null for the string
+"PURCHASE". The consequence, had it run: every settlement silently recorded as a
+sales allocation. The C# store also lacked the `invoices:doc_number` virtual
+lookup entirely, so the settlements template could not import in C# either.
+
+Both fixed. The lesson repeats: **the Python reference had every one of these
+bugs too**, and each was found by making a test execute the path rather than
+assert that the path exists.

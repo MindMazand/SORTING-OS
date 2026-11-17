@@ -113,9 +113,38 @@ namespace Mazandasht.Persistence
             return cols;
         }
 
+        /// <summary>
+        /// A lookup target that is not a table. `invoices:doc_number` is the
+        /// owner's single invoice-number column: it must find a purchase OR a
+        /// sales invoice, and the view is the only thing that can answer that
+        /// without a second rule to keep in sync.
+        ///
+        /// Without this the lookup threw "جدول مجاز نیست: invoices" and the
+        /// settlements template could never import — the same defect the Python
+        /// reference had, found there first by test_import.py.
+        /// </summary>
+        private static readonly Dictionary<string, string> VirtualLookups =
+            new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                { "invoices:doc_number", "v_invoice_lookup" },
+            };
+
         public long? Lookup(string lookupSpec, string code)
         {
             if (string.IsNullOrEmpty(lookupSpec) || string.IsNullOrEmpty(code)) return null;
+            string view;
+            if (VirtualLookups.TryGetValue(lookupSpec, out view))
+            {
+                using (var vcmd = _connection.CreateCommand())
+                {
+                    vcmd.CommandText =
+                        "SELECT id FROM " + view + " WHERE doc_number = @c LIMIT 1";
+                    vcmd.Parameters.AddWithValue("@c", code);
+                    var vres = vcmd.ExecuteScalar();
+                    return vres == null || vres == DBNull.Value ? (long?)null
+                                                                : Convert.ToInt64(vres);
+                }
+            }
             var parts = lookupSpec.Split(':');
             var table = parts[0];
             var column = parts.Length > 1 ? parts[1] : "code";
