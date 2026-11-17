@@ -1,0 +1,249 @@
+{
+  "_readme": [
+    "MAZANDASHT — golden vectors for the import engine.",
+    "Produced by the Python reference implementation (tools/import_parser.py,",
+    "tools/import_engine.py) which is covered by tools/test_import.py 34/34.",
+    "The C# port MUST reproduce these values exactly. Any mismatch is a port",
+    "bug, not a test bug: the Python side is checked against known real dates",
+    "and the owner's own formula.",
+    "",
+    "Consumed by src/Mazandasht.Tests/ImportGoldenTests.cs (Windows only) and by",
+    "tools/check_golden_vectors.py (here, no .NET needed)."
+  ],
+  "jalali_to_iso": {
+    "1403/01/01": "2024-03-20",
+    "1403/05/01": "2024-07-22",
+    "1403/12/30": "2025-03-20",
+    "1404/01/01": "2025-03-21",
+    "1402/01/01": "2023-03-21",
+    "1402/10/11": "2024-01-01",
+    "1400/12/30": "2022-03-21",
+    "1401/01/01": "2022-03-21",
+    "1399/12/30": "2021-03-20",
+    "1398/07/15": "2019-10-07"
+  },
+  "jalali_leap": {
+    "1390": false,
+    "1391": true,
+    "1392": false,
+    "1393": false,
+    "1394": false,
+    "1395": true,
+    "1396": false,
+    "1397": false,
+    "1398": false,
+    "1399": true,
+    "1400": false,
+    "1401": false,
+    "1402": false,
+    "1403": true,
+    "1404": false,
+    "1405": false,
+    "1406": false,
+    "1407": false,
+    "1408": true,
+    "1409": false,
+    "1410": false
+  },
+  "jalali_valid": [
+    {
+      "input": "1403/05/01",
+      "valid": true,
+      "normalized": "1403/05/01"
+    },
+    {
+      "input": "14030501",
+      "valid": true,
+      "normalized": "1403/05/01"
+    },
+    {
+      "input": "1403/5/1",
+      "valid": true,
+      "normalized": "1403/05/01"
+    },
+    {
+      "input": "1403/12/30",
+      "valid": true,
+      "normalized": "1403/12/30"
+    },
+    {
+      "input": "1402/12/30",
+      "valid": false,
+      "reason_contains": "روز نامعتبر"
+    },
+    {
+      "input": "1403/13/01",
+      "valid": false,
+      "reason_contains": "ماه نامعتبر"
+    },
+    {
+      "input": "1403/00/10",
+      "valid": false,
+      "reason_contains": "ماه نامعتبر"
+    },
+    {
+      "input": "1403/07/31",
+      "valid": false,
+      "reason_contains": "روز نامعتبر"
+    },
+    {
+      "input": "45292",
+      "valid": false,
+      "reason_contains": "Excel serial"
+    },
+    {
+      "input": "2024-01-01",
+      "valid": false,
+      "reason_contains": "YYYY/MM/DD"
+    }
+  ],
+  "kg_to_grams": [
+    {
+      "input": "5200.500",
+      "grams": 5200500
+    },
+    {
+      "input": "3100",
+      "grams": 3100000
+    },
+    {
+      "input": "1.5",
+      "grams": 1500
+    },
+    {
+      "input": "0.001",
+      "grams": 1
+    },
+    {
+      "input": "75.000",
+      "grams": 75000
+    },
+    {
+      "input": "1000000.999",
+      "grams": 1000000999
+    }
+  ],
+  "kg_rejected": [
+    {
+      "input": "100.0001",
+      "reason_contains": "۳ رقم اعشار"
+    },
+    {
+      "input": "1.2345",
+      "reason_contains": "۳ رقم اعشار"
+    },
+    {
+      "input": "-5",
+      "reason_contains": "منفی"
+    },
+    {
+      "input": "abc",
+      "reason_contains": "عددی نیست"
+    }
+  ],
+  "net_weight_check": {
+    "_note": "DEC-NEW-008 purchase class: base = Scale - Baskets*P01, then net = base*(1 - P02/100). SettlementCalculator owns this; the golden vectors pin the arithmetic the port must match.",
+    "_owner_status": "P01=1.5kg / P02=1% are still unconfirmed (DEC-NEW-004); vectors use the defaults.",
+    "cases": [
+      {
+        "scale_grams": 5200500,
+        "basket_count": 0,
+        "p01_grams": 1500,
+        "p02_percent": 0.0,
+        "expected_tare_grams": 0,
+        "expected_net_grams": 5200500
+      },
+      {
+        "scale_grams": 5200500,
+        "basket_count": 40,
+        "p01_grams": 1500,
+        "p02_percent": 0.0,
+        "expected_tare_grams": 60000,
+        "expected_net_grams": 5140500
+      },
+      {
+        "scale_grams": 5200500,
+        "basket_count": 40,
+        "p01_grams": 1500,
+        "p02_percent": 1.0,
+        "expected_tare_grams": 60000,
+        "expected_net_grams": 5089095
+      }
+    ]
+  },
+  "rial_gross": [
+    {
+      "_note": "gross = round_half_up(grams * rate / 1000)",
+      "grams": 1000250,
+      "rate": 85000,
+      "gross_rial": 85021250
+    },
+    {
+      "grams": 1000000,
+      "rate": 85000,
+      "gross_rial": 85000000
+    },
+    {
+      "grams": 1500,
+      "rate": 1000,
+      "gross_rial": 1500
+    }
+  ],
+  "net_invoice": [
+    {
+      "_note": "purchase: net = gross + freight + commission + adjustments - discount",
+      "gross": 85021250,
+      "discount": 50000,
+      "freight": 0,
+      "commission": 0,
+      "adjustments": 0,
+      "net_rial": 84971250
+    },
+    {
+      "_note": "sales: net = gross - freight - commission - other - discount",
+      "gross": 85021250,
+      "discount": 50000,
+      "freight": 100000,
+      "commission": 5000,
+      "other": 20000,
+      "net_rial": 84846250
+    }
+  ],
+  "percent": [
+    {
+      "input": "1",
+      "value": 1.0
+    },
+    {
+      "input": "0",
+      "value": 0.0
+    },
+    {
+      "input": "100",
+      "value": 100.0
+    }
+  ],
+  "percent_rejected": [
+    {
+      "input": "101",
+      "reason_contains": "بین ۰ و ۱۰۰"
+    },
+    {
+      "input": "-1",
+      "reason_contains": "بین ۰ و ۱۰۰"
+    }
+  ],
+  "party_nature_from_code": {
+    "C001": "C",
+    "C002": "C",
+    "SL001": "SL",
+    "S001": "S",
+    "E001": "E",
+    "X001": "X",
+    "F001": "F",
+    "L001": "L",
+    "CAP001": "CAP",
+    "W01": "X",
+    "ZZZ": "X"
+  }
+}

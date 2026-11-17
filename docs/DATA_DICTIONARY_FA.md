@@ -4,8 +4,8 @@
 > از اسکیمای واقعی تولید می‌شود؛ اگر با کد اختلاف داشت، کد درست است و این فایل
 > باید دوباره تولید شود. مبنای فصل ۱۸ سند اصلی (Data Dictionary).
 
-- نسخه اسکیما: **v3**
-- تعداد جدول: **62** · ویو: **4** · تریگر: **15** · ایندکس: **23**
+- نسخه اسکیما: **v4**
+- تعداد جدول: **62** · ویو: **5** · تریگر: **17** · ایندکس: **25**
 
 ## قواعد ثابت (روی همه جدول‌ها)
 
@@ -21,6 +21,7 @@
 ## ویوهای مشتق‌شده
 
 - `v_account_balance`
+- `v_invoice_lookup`
 - `v_journal_balance`
 - `v_stock_balance`
 - `v_weigh_ticket_import`
@@ -36,6 +37,8 @@
 - `trg_cheque_due_after_issue_v002`
 - `trg_cheque_sayad_16_upd_v002`
 - `trg_cheque_sayad_16_v002`
+- `trg_invoice_number_unique_purchase`
+- `trg_invoice_number_unique_sales`
 - `trg_journal_line_no_delete_approved`
 - `trg_journal_line_no_update_approved`
 - `trg_journal_no_delete_approved`
@@ -576,7 +579,7 @@
 | ستون | نوع | الزام | پیش‌فرض | یادداشت |
 |---|---|---|---|---|
 | `id` | INTEGER | PK |  |  |
-| `code` | TEXT | الزامی |  |  |
+| `code` | TEXT | الزامی |  | **ACTIVE** — شناسه داخلی (PAY001)؛ هرگز با شماره سند اشتباه نشود. |
 | `party_id` | INTEGER | اختیاری |  |  |
 | `bank_account_id` | INTEGER | اختیاری |  |  |
 | `txn_type_id` | INTEGER | اختیاری |  |  |
@@ -592,6 +595,7 @@
 | `created_at` | TEXT | الزامی | `datetime('now')` |  |
 | `instrument_type` | TEXT | اختیاری |  |  |
 | `cheque_id` | INTEGER | اختیاری |  |  |
+| `doc_number` | TEXT | اختیاری |  | **ACTIVE** — شماره سند پرداخت که کاربر می‌خواند؛ `code` شناسه داخلی پایدار است و این دو یکی نیستند. |
 
 کلیدهای خارجی: `cheque_id` → `cheques.id` · `approved_by` → `users.id` · `created_by` → `users.id` · `txn_type_id` → `txn_types.id` · `bank_account_id` → `bank_accounts.id` · `party_id` → `parties.id`
 
@@ -757,7 +761,7 @@
 
 کلیدهای خارجی: `approved_by` → `users.id` · `created_by` → `users.id` · `sorting_batch_id` → `sorting_batches.id` · `lot_id` → `lots.id` · `party_id` → `parties.id`
 
-### `schema_field_notes`  — 21 ردیف در دیتابیس تازه
+### `schema_field_notes`  — 24 ردیف در دیتابیس تازه
 
 | ستون | نوع | الزام | پیش‌فرض | یادداشت |
 |---|---|---|---|---|
@@ -767,7 +771,7 @@
 | `status` | TEXT | الزامی | `'ACTIVE'` |  |
 | `note` | TEXT | الزامی | `''` |  |
 
-### `schema_migrations`  — 3 ردیف در دیتابیس تازه
+### `schema_migrations`  — 4 ردیف در دیتابیس تازه
 
 | ستون | نوع | الزام | پیش‌فرض | یادداشت |
 |---|---|---|---|---|
@@ -830,6 +834,7 @@
 | `warehouse_id` | INTEGER | اختیاری |  |  |
 | `grams` | INTEGER | الزامی | `0` |  |
 | `package_count` | INTEGER | الزامی | `0` |  |
+| `code` | TEXT | اختیاری |  | **ACTIVE** — شناسه خروجی سورت برای ارجاع در فاکتور فروش. |
 
 کلیدهای خارجی: `warehouse_id` → `warehouses.id` · `packaging_id` → `packaging_types.id` · `grade_id` → `grades.id` · `product_id` → `products.id` · `batch_id` → `sorting_batches.id`
 
@@ -1034,7 +1039,9 @@
 - `ux_journal_source_key`
 - `ux_parties_economic_code`
 - `ux_partnership_source_key`
+- `ux_payments_doc_number`
 - `ux_purchase_source_key`
 - `ux_sales_source_key`
+- `ux_sorting_output_code`
 - `ux_sorting_source_key`
 - `ux_weigh_source_key`

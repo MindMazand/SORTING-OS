@@ -7,6 +7,10 @@
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\Mazandasht.Domain\Mazandasht.Domain.csproj" />
+    <!-- SqliteImportStore implements Application.Import.IImportStore. Without
+         this reference the persistence assembly cannot see the interface and
+         the build fails; caught by tools/check_project_refs.py. -->
+    <ProjectReference Include="..\Mazandasht.Application\Mazandasht.Application.csproj" />
     <PackageReference Include="System.Data.SQLite" Version="1.0.118" />
   </ItemGroup>
 </Project>

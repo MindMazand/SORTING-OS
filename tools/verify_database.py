@@ -27,7 +27,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SCHEMA = os.path.join(ROOT, "database", "schema", "schema_v001.sql")
 SEED = os.path.join(ROOT, "database", "seed", "seed_v001.sql")
 MIGRATION_DIR = os.path.join(ROOT, "database", "migrations")
-SCHEMA_VERSION = 3
+SCHEMA_VERSION = 4
 
 RESULTS = []
 
@@ -367,7 +367,7 @@ def main():
     def t_v002_migration_applied():
         ver = con.execute("SELECT MAX(version) FROM schema_migrations").fetchone()[0]
         assert ver == SCHEMA_VERSION, f"expected schema version {SCHEMA_VERSION}, got {ver}"
-        for want in (2, 3):
+        for want in (2, 3, 4):
             row = con.execute(
                 "SELECT name FROM schema_migrations WHERE version = ?", (want,)).fetchone()
             assert row and f"v00{want}" in row[0], f"v00{want} record: {row}"
@@ -795,6 +795,67 @@ def main():
         ).fetchone()[0]
         assert 'amount_rial >= 0' in sql, "rebuilt allocations table lost its money check"
 
+    def t_v004_lookup_columns():
+        """v004 exists because tools/check_csharp_schema.py found three
+        references that could not resolve. Each is now proven by behaviour."""
+        views = {r[0] for r in con.execute(
+            "SELECT name FROM sqlite_master WHERE type='view'")}
+        assert "v_invoice_lookup" in views, "v_invoice_lookup missing"
+
+        # payments: doc_number is a user-facing number, distinct from `code`
+        pid = con.execute(
+            "INSERT INTO payments(code,doc_number,direction,amount_rial) "
+            "VALUES ('PAY-9','DOC-9','IN',1000)").lastrowid
+        con.commit()
+        r = con.execute(
+            "SELECT code,doc_number FROM payments WHERE id=?", (pid,)).fetchone()
+        assert r == ('PAY-9','DOC-9'), r
+        con.execute(
+            "INSERT INTO payments(code,doc_number,direction,amount_rial) "
+            "VALUES ('PAY-10','DOC-10','IN',1)")
+        con.commit()
+        expect_error(lambda: con.execute(
+            "UPDATE payments SET doc_number='DOC-9' WHERE code='PAY-10'"), "dup doc")
+        con.rollback()
+
+        # sorting_outputs.code gives a sorting output something to quote
+        lot = con.execute(
+            "INSERT INTO lots(code,product_id,warehouse_id) VALUES ('LOT-V4',1,1)").lastrowid
+        batch = con.execute(
+            "INSERT INTO sorting_batches(code,lot_id) VALUES ('SB-V4',?)", (lot,)).lastrowid
+        con.commit()
+        out = con.execute(
+            "INSERT INTO sorting_outputs(batch_id,product_id,grams,code) "
+            "VALUES (?,1,1000,'SO-1')", (batch,)).lastrowid
+        con.commit()
+        assert con.execute(
+            "SELECT code FROM sorting_outputs WHERE id=?", (out,)).fetchone()[0] == 'SO-1'
+        expect_error(lambda: con.execute(
+            "INSERT INTO sorting_outputs(batch_id,product_id,grams,code) "
+            "VALUES (?,1,1,'SO-1')", (batch,)), "duplicate sorting output code")
+        con.rollback()
+
+        # the invoice view resolves a number on either side
+        pi = con.execute(
+            "INSERT INTO purchase_invoices(code,doc_number,date_iso) "
+            "VALUES ('PI-V4','9001','2024-01-01')").lastrowid
+        si = con.execute(
+            "INSERT INTO sales_invoices(code,doc_number,date_iso) "
+            "VALUES ('SI-V4','9002','2024-01-02')").lastrowid
+        con.commit()
+        assert con.execute(
+            "SELECT kind,id FROM v_invoice_lookup WHERE doc_number='9001'").fetchone() == ('PURCHASE', pi)
+        assert con.execute(
+            "SELECT kind,id FROM v_invoice_lookup WHERE doc_number='9002'").fetchone() == ('SALES', si)
+        assert con.execute(
+            "SELECT COUNT(*) FROM v_invoice_lookup WHERE doc_number='9999'").fetchone()[0] == 0
+
+        # one number cannot live on both sides
+        expect_error(lambda: con.execute(
+            "INSERT INTO sales_invoices(code,doc_number) VALUES ('SI-V5','9001')"),
+            "invoice number ambiguous across purchase and sales")
+        con.rollback()
+
     tests = [
         ("schema: all ch.18 entities + views exist", t_schema_tables),
         ("seed: base definitions + role matrix", t_seed_counts),
@@ -834,6 +895,7 @@ def main():
         ("v002: v001 indexes survived; v002 indexes present", t_v002_v001_indexes_survived),
         ("v002: fresh install shape == upgraded install shape", t_v002_fresh_equals_upgraded),
         ("v002: rebuilt tables kept their CHECK constraints", t_v002_no_rebuild_loss),
+        ("v004: doc_number, sorting output code, invoice lookup view", t_v004_lookup_columns),
     ]
     for name, fn in tests:
         check(name, fn)

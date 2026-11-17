@@ -14,4 +14,13 @@
     <PackageReference Include="xunit" Version="2.6.1" />
     <PackageReference Include="xunit.runner.visualstudio" Version="2.5.3" />
   </ItemGroup>
+  <ItemGroup>
+    <!-- Golden vectors are read at runtime. Without this the test passes in the
+         IDE (cwd = repo root) and fails on CI (cwd = bin), which is the classic
+         "works on my machine" test bug. -->
+    <None Include="..\..\tests\golden\import_vectors.json">
+      <Link>tests\golden\import_vectors.json</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
 </Project>
