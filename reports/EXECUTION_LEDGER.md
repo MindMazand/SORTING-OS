@@ -92,3 +92,57 @@ The C# `ImportRunner` and `SqliteImportBatchStore` are **written and unrun**.
 Their rollback plan is verified to be identical to the Python plan that is
 proven, but the C# execution path has never executed. Status stays
 `IMPLEMENTED / NOT RUN`.
+
+## NEW-07 — The last two writers had never been executed, and both were broken
+
+`t_detect_all_eleven` proved that all 11 templates are *recognised* from their
+headers. It never imported them. Two writers had therefore never run once:
+
+### SETTLEMENTS could not import at all
+
+It resolved the invoice number through `invoices:doc_number`. There is no
+`invoices` table, so the lookup raised `no such table: invoices` on the first
+row. It also read `rr.ids["__invoice_kind"]` to decide whether the allocation
+belongs to a purchase or a sales invoice — and **nothing ever set that key**, so
+the read was decorative.
+
+Fixed with an explicit virtual-lookup table. The settlement line now attaches to
+the correct side, and a test imports one allocation against a purchase invoice
+and one against a sales invoice, then asserts that each row's NULL side is
+really NULL.
+
+### PARTNERSHIP imported every event with no partner
+
+The contract mapped the partner to `partner_party_id`. The column is `party_id`.
+`_select_columns` dropped the unknown key **silently**, so:
+
+    import_batches.status = IMPORTED
+    partnership_events.party_id = NULL
+    no warning anywhere
+
+This is the worst shape a bug can take in an accounting system: nothing fails,
+the numbers are simply wrong. `_select_columns` now raises.
+
+### And 23 more contract fields pointed at the wrong table or a made-up name
+
+Invoice *line* fields (`rate_rial_per_kg`, `grams`, `discount_rial`, ...) were
+mapped onto the invoice *header*. Sorting fields used names that never existed
+(`input_lot_id` vs `lot_id`, `output_grams` vs `grams`). `input_warehouse_id` has
+no column anywhere, by design: the lot already carries its warehouse.
+
+Header vs line was implicit knowledge in one person's head. It is now
+`FIELD_TARGETS` in `tools/check_contract_schema.py`, which fails on a wrong
+column, on two fields writing the same column, and on a field that belongs to
+neither group. Proven by planting a typo and watching it fail.
+
+### A bug in the test harness itself
+
+When a test died mid-transaction it left the transaction open and every later
+test failed with "cannot start a transaction within a transaction". One real
+failure buried six innocent ones. `check()` now rolls back on failure.
+
+### Numbers
+
+    test_import.py        36 -> 39 tests, 39/39 PASS
+    verify_all.py         6 gates, exit 0
+    contract->schema      124 columns, 11 templates, PASS

@@ -53,6 +53,49 @@ namespace Mazandasht.Persistence
                 throw new InvalidOperationException("جدول مجاز نیست: " + table);
         }
 
+        private readonly Dictionary<string, HashSet<string>> _nullSkippableCache =
+            new Dictionary<string, HashSet<string>>(StringComparer.Ordinal);
+
+        /// <summary>
+        /// Columns where a null must be OMITTED rather than written.
+        ///
+        /// "Blank is not zero" means a blank cell arrives as null and must stay
+        /// null. But writing an explicit NULL over a column declared
+        /// NOT NULL DEFAULT '' does not preserve a blank — it overthrows the
+        /// default the schema chose for "not supplied" and the insert fails.
+        /// For those columns the correct move is to drop the key and let the
+        /// schema speak. Nullable columns keep their null, so a blank
+        /// loss_percent stays NULL and never becomes 0%.
+        ///
+        /// This mirrors _select_columns in tools/import_engine.py exactly; the
+        /// two disagreeing is how such bugs get reintroduced.
+        /// </summary>
+        private HashSet<string> NullSkippable(string table)
+        {
+            EnsureTable(table);
+            var key = "nullskip:" + table;
+            HashSet<string> cached;
+            if (_nullSkippableCache.TryGetValue(key, out cached)) return cached;
+
+            var set = new HashSet<string>(StringComparer.Ordinal);
+            using (var cmd = _connection.CreateCommand())
+            {
+                cmd.CommandText = "PRAGMA table_info(" + table + ")";
+                using (var r = cmd.ExecuteReader())
+                {
+                    while (r.Read())
+                    {
+                        var notNull = Convert.ToInt64(r["notnull"]) == 1;
+                        var hasDefault = r["dflt_value"] != DBNull.Value &&
+                                         r["dflt_value"] != null;
+                        if (notNull && hasDefault) set.Add(Convert.ToString(r["name"]));
+                    }
+                }
+            }
+            _nullSkippableCache[key] = set;
+            return set;
+        }
+
         private HashSet<string> Columns(string table)
         {
             EnsureTable(table);
@@ -144,7 +187,12 @@ namespace Mazandasht.Persistence
                 throw new InvalidOperationException(
                     "ستون(های) ناشناخته در " + table + ": " + string.Join(", ", unknown));
 
-            var keys = values.Keys.ToList();
+            var skippable = NullSkippable(table);
+            var keys = values.Keys
+                .Where(k => !(values[k] == null && skippable.Contains(k)))
+                .ToList();
+            if (keys.Count == 0)
+                throw new InvalidOperationException("هیچ ستونی برای درج در " + table + " نماند");
             var sql = "INSERT INTO " + table + " (" + string.Join(", ", keys) + ") VALUES (" +
                       string.Join(", ", keys.Select((k, i) => "@p" + i)) + ")";
             using (var cmd = _connection.CreateCommand())

@@ -225,6 +225,23 @@ def check_parity():
 
     ok(f"ستون‌ها: {total} ستون ستون‌به‌ستون مقایسه شد")
 
+    # The "blank is not zero, but null must not overthrow a column default"
+    # rule exists twice: _select_columns in Python and NullSkippable in C#.
+    # If they disagree, one side imports without error and the other does not,
+    # and which one breaks depends only on which we happen to run first.
+    py_src = open(os.path.join(ROOT, "tools", "import_engine.py"), encoding="utf-8").read()
+    cs_src = open(os.path.join(ROOT, "src", "Mazandasht.Persistence",
+                               "SqliteImportStore.cs"), encoding="utf-8").read()
+    py_rule = "r[3] == 1 and r[4] is not None" in py_src
+    cs_rule = 'Convert.ToInt64(r["notnull"]) == 1' in cs_src and \
+              'r["dflt_value"]' in cs_src
+    if py_rule and cs_rule:
+        ok("قاعده «null روی ستون NOT NULL DEFAULT» در هر دو زبان یکی است")
+    elif py_rule != cs_rule:
+        fail("قاعده null/پیش‌فرض فقط در یک زبان پیاده شده است")
+    else:
+        fail("قاعده null/پیش‌فرض در هیچ‌کدام پیدا نشد")
+
 
 def main():
     print("=== تطبیق قرارداد C# با مرجع Python ===")

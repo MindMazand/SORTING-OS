@@ -105,11 +105,31 @@ def file_sha256(path: str) -> str:
 # ---------------------------------------------------------------------------
 # Stage 5 — resolve
 # ---------------------------------------------------------------------------
-def _lookup(con, spec: str, code: str) -> Optional[int]:
+# A virtual lookup target: `invoices:doc_number` is not a table. The owner
+# enters ONE invoice number and the system must find it on either side. Before
+# migration 004's view existed this lookup raised "no such table: invoices" and
+# the settlements template could never import at all.
+VIRTUAL_LOOKUPS = {
+    "invoices:doc_number": "v_invoice_lookup",
+}
+
+
+def _lookup_row(con, spec: str, code: str):
+    """Resolve a code to a row. Returns (id, kind) where kind is only meaningful
+    for a virtual lookup."""
+    view = VIRTUAL_LOOKUPS.get(spec)
+    if view:
+        row = con.execute(
+            f"SELECT id, kind FROM {view} WHERE doc_number = ?", (code,)).fetchone()
+        return (row[0], row[1]) if row else (None, None)
     table, _, column = spec.partition(":")
     column = column or "code"
     row = con.execute(f"SELECT id FROM {table} WHERE {column} = ?", (code,)).fetchone()
-    return row[0] if row else None
+    return (row[0], None) if row else (None, None)
+
+
+def _lookup(con, spec: str, code: str) -> Optional[int]:
+    return _lookup_row(con, spec, code)[0]
 
 
 def resolve_rows(con, tpl: C.Template, rows: List[P.ParsedRow]) -> List[ResolvedRow]:
@@ -128,14 +148,19 @@ def resolve_rows(con, tpl: C.Template, rows: List[P.ParsedRow]) -> List[Resolved
                 if f.required:
                     rr.errors.append(f"«{f.name_fa}» الزامی است")
                 continue
-            rid = _lookup(con, f.lookup, str(code))
+            rid, kind = _lookup_row(con, f.lookup, str(code))
             if rid is None:
-                table = f.lookup.split(":")[0]
+                table = VIRTUAL_LOOKUPS.get(f.lookup, f.lookup).split(":")[0]
                 rr.errors.append(
                     f"«{f.name_fa}» = «{code}» در اطلاعات پایه ({table}) پیدا نشد. "
                     "ابتدا آن را بسازید یا فایل مبدأ را وارد کنید.")
             else:
                 rr.ids[f.name_en] = rid
+                if kind is not None:
+                    # Which side the invoice was found on decides which FK the
+                    # settlement line may fill. Carried under a dunder key so it
+                    # can never collide with a template field name.
+                    rr.ids["__invoice_kind"] = kind
         out.append(rr)
     return out
 
@@ -235,10 +260,31 @@ def _next_code(con, table: str, prefix: str) -> str:
 
 
 def _select_columns(con, table: str, wanted: Dict[str, object]) -> Dict[str, object]:
-    """Drop keys the table does not have, so a contract typo cannot become a
-    runtime crash halfway through a batch."""
-    cols = {r[1] for r in con.execute(f"PRAGMA table_info({table})")}
-    return {k: v for k, v in wanted.items() if k in cols}
+    """Refuse keys the table does not have.
+
+    This used to DROP unknown keys "so a contract typo cannot become a runtime
+    crash". The price was silent data loss: the contract mapped the partner to
+    `partner_party_id`, the column is `party_id`, and every partnership event
+    was imported with a NULL partner and no warning. A loud failure at the first
+    row is far cheaper than a quiet NULL discovered months later.
+    """
+    info = list(con.execute(f"PRAGMA table_info({table})"))
+    cols = {r[1] for r in info}
+    unknown = sorted(set(wanted) - cols)
+    if unknown:
+        raise ValueError(
+            f"ستون‌های ناشناخته برای جدول {table}: {', '.join(unknown)} — "
+            "نگاشت قرارداد با اسکیما نمی‌خواند")
+
+    # A blank cell is None here, and "blank is not zero" is a product rule, so
+    # None must not be turned into 0. But writing an explicit NULL over a column
+    # declared NOT NULL DEFAULT '' is a different thing: it overrides the
+    # default the schema chose for "not supplied" and fails the insert. For
+    # those columns the correct move is to OMIT the key and let the schema
+    # speak, which is what dropping it here does. Nullable columns keep their
+    # None, so a blank loss_percent stays NULL rather than becoming 0%.
+    omitted = {r[1] for r in info if r[3] == 1 and r[4] is not None}
+    return {k: v for k, v in wanted.items() if not (v is None and k in omitted)}
 
 
 def _insert(con, table: str, values: Dict[str, object]) -> int:

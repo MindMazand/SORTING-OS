@@ -28,7 +28,7 @@ RESULTS = []
 TMP = tempfile.mkdtemp(prefix="mazandasht_import_")
 
 
-def check(name, fn):
+def check(name, fn, con=None):
     try:
         fn()
         RESULTS.append((name, True, ""))
@@ -37,6 +37,15 @@ def check(name, fn):
         RESULTS.append((name, False, str(e)))
         print(f"FAIL  {name}: {e}")
         traceback.print_exc(limit=3)
+        # A test that dies mid-transaction used to poison every later test with
+        # "cannot start a transaction within a transaction". The first real
+        # failure then buried six innocent ones, which is how a suite becomes
+        # untrustworthy.
+        if con is not None:
+            try:
+                con.execute("ROLLBACK")
+            except sqlite3.Error:
+                pass
 
 
 def tpl_grid(code, data_rows, numeric=None):
@@ -328,6 +337,84 @@ def main():
         joined = " ".join(resolved[0].errors)
         assert "پیدا نشد" in joined, joined
         assert con.execute("SELECT COUNT(*) FROM parties WHERE code='C999'").fetchone()[0] == 0
+
+    # -- the two writers no test had ever executed ---------------------------
+    def t_import_settlement_finds_invoice_on_either_side():
+        """SETTLEMENTS had a writer that could never run: it resolved the invoice
+        through `invoices:doc_number`, a table that does not exist, and depended
+        on `__invoice_kind` which nothing ever set. Detection-only coverage hid
+        both. This imports a real settlement against a PURCHASE invoice."""
+        con.execute(
+            "INSERT INTO payments(code, doc_number, party_id, direction, amount_rial, status) "
+            "VALUES('PAY900','PAY-1',(SELECT id FROM parties WHERE code='C001'),"
+            "'OUT',1000,'DRAFT')")
+        con.execute(
+            "INSERT INTO purchase_invoices(code, doc_number, date_iso, date_shamsi, "
+            "party_id, status) VALUES('PI900','PI-1','2024-07-22','1403/05/01',"
+            "(SELECT id FROM parties WHERE code='C001'),'DRAFT')")
+        con.execute(
+            "INSERT INTO sales_invoices(code, doc_number, date_iso, date_shamsi, "
+            "party_id, status) VALUES('SI900','SI-9','2024-07-22','1403/05/03',"
+            "(SELECT id FROM parties WHERE code='C001'),'DRAFT')")
+        con.commit()
+
+        p = build("SETTLEMENTS", "settle.xlsx",
+                  [["AL-1", "PAY-1", "PI-1", "1000", "BANK", ""],
+                   ["AL-2", "PAY-1", "SI-9", "500", "BANK", ""]])
+        out = E.import_file(con, p)
+        assert out.errors == [], out.errors
+        assert out.created == 2, (out.created, out.errors)
+
+        buy = con.execute(
+            "SELECT purchase_invoice_id IS NOT NULL, sales_invoice_id IS NULL, amount_rial "
+            "FROM payment_allocations WHERE source_key='AL-1'").fetchone()
+        sell = con.execute(
+            "SELECT purchase_invoice_id IS NULL, sales_invoice_id IS NOT NULL, amount_rial "
+            "FROM payment_allocations WHERE source_key='AL-2'").fetchone()
+        assert buy == (1, 1, 1000), buy
+        assert sell == (1, 1, 500), sell
+
+    def t_settlement_ambiguous_or_unknown_invoice_is_an_error():
+        """An invoice number that exists on neither side must not create an
+        allocation pointing at nothing."""
+        p = build("SETTLEMENTS", "settle_bad.xlsx",
+                  [["AL-9", "PAY-1", "PI-NOPE", "1000", "BANK", ""]])
+        res = P.parse_file(p)
+        resolved = E.resolve_rows(con, res.template, res.rows)
+        assert not resolved[0].ok
+        assert any("پیدا نشد" in e for e in resolved[0].errors), resolved[0].errors
+
+    def t_import_partnership_event():
+        """PARTNERSHIP is the last writer; blank-vs-zero matters here because a
+        blank loss percent must stay NULL, not become 0% (which would mean the
+        partner agreed to no loss at all)."""
+        p = build("PARTNERSHIP", "partner.xlsx",
+                  [["PA-1", "1403/05/01", "PARTNER_IN", "C001", "PB-ORANGE",
+                    "BK01", "W01", "1000", "20", "5", "2", "0", "50", "",
+                    "NEAREST", "", "R-1", "مبدأ", "مقصد", ""]])
+        out = E.import_file(con, p)
+        assert out.errors == [], out.errors
+        assert out.created == 1, (out.created, out.errors)
+        row = con.execute(
+            "SELECT event_type, date_shamsi, gross_grams, consumed_baskets, "
+            "       partner_share_percent, loss_percent, extra_waste_grams "
+            "FROM partnership_events WHERE source_key='PA-1'").fetchone()
+        assert row[0] == "PARTNER_IN" and row[1] == "1403/05/01", row
+        assert row[2] == 1000000, row      # 1000 kg -> grams, exact
+        assert row[3] == 20, row
+        assert row[6] == 0, row          # an explicit 0 kg stays 0
+        # and a BLANK percent must stay NULL, not become 0% ("no loss agreed")
+        blank = build("PARTNERSHIP", "partner_blank.xlsx",
+                      [["PA-2", "1403/05/02", "PARTNER_IN", "C001", "PB-ORANGE",
+                        "BK01", "W01", "", "", "", "", "", "", "", "NEAREST", "",
+                        "", "مبدأ", "مقصد", ""]])
+        out2 = E.import_file(con, blank)
+        assert out2.errors == [], out2.errors
+        got = con.execute(
+            "SELECT loss_percent, gross_grams FROM partnership_events "
+            "WHERE source_key='PA-2'").fetchone()
+        assert got[0] is None, f"blank loss percent became {got[0]!r}"
+        assert got[1] == 0, "blank weight is 0 grams, and that is a recorded fact"
 
     # -- stage 6: commit -----------------------------------------------------
     def t_import_parties():
@@ -622,6 +709,9 @@ def main():
         ("قاعده: فاکتور فروش موجودی را تغییر نمی‌دهد", t_sales_invoice_does_not_move_stock),
         ("ثبت: تراکنش بانکی، جهت و کارمزد", t_bank_transaction_direction_and_fee),
         ("ثبت: نگاشت جهت چک IN→RECEIVED", t_cheque_direction_mapping),
+        ("ثبت: تسویه فاکتور را در هر دو سمت پیدا می‌کند", t_import_settlement_finds_invoice_on_either_side),
+        ("قاعده: شماره فاکتور ناشناس تسویه نمی‌سازد", t_settlement_ambiguous_or_unknown_invoice_is_an_error),
+        ("ثبت: رویداد مشارکت (آخرین نویسنده)", t_import_partnership_event),
         ("قاعده: انتقال سبد نیازمند دو انبار", t_basket_transfer_needs_both_warehouses),
         ("قاعده: موازنه جرم سورتینگ", t_sorting_mass_balance_enforced),
         ("پیش‌نمایش: هیچ سندی نوشته نمی‌شود", t_preview_writes_nothing),
@@ -635,7 +725,7 @@ def main():
         ("یکپارچگی: FK و integrity پس از همه واردسازی‌ها", t_integrity_after_all_imports),
     ]
     for name, fn in tests:
-        check(name, fn)
+        check(name, fn, con)
 
     con.close()
     passed = sum(1 for _, ok, _ in RESULTS if ok)
