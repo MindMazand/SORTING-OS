@@ -219,3 +219,15 @@ Also fixed this pass: a missing optional dependency (`tree_sitter`) used to turn
 the whole gate red with a message that said nothing about the repository. It is
 a NOTE with the install command now, and the PASS line states plainly that
 syntax was not checked.
+
+### NEW-11 — scale and rollback precision
+
+The owner's real `01_Parties` template, filled with 2,000 rows and imported:
+**6,449 rows/second**, zero errors. Rollback then deleted exactly those 2,000
+rows and nothing else — the seed rows were compared code-by-code before and
+after and were untouched. `foreign_key_check` empty afterwards.
+
+That last property is the one worth testing. A rollback that "works" by
+deleting too much is worse than one that fails loudly, and a row count alone
+cannot tell the difference. The test compares the full set of party codes
+before and after, not just the totals.

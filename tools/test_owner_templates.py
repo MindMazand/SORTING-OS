@@ -197,6 +197,53 @@ def main():
         assert con.execute("PRAGMA foreign_key_check").fetchall() == []
         print(f"OK    زنجیره روی فایل‌های واقعی: lot {lot[0]} گرم، "
               "فاکتور به باسکول وصل، FK سالم")
+    # ---------------------------------------------------------------------
+    # Scale, and rollback precision, on the owner's real template shape.
+    # 2,000 rows is well past anything the owner will type by hand, and it
+    # checks the two properties that matter at size: rollback deletes EXACTLY
+    # the batch's rows (no seed row, no row from another batch) and the
+    # database still passes foreign_key_check afterwards.
+    # ---------------------------------------------------------------------
+    import time
+    big_tmp = tempfile.mkdtemp(prefix="owner_scale_")
+    grid = _raw_grid(os.path.join(FIXTURES, "01_Parties.xlsx"))
+    n_rows = 2000
+    grid["داده‌ها"] = grid["داده‌ها"] + [
+        [f"S{i:05d}", f"شخص {i}", "PERSON", f"نام {i}", f"00{i:08d}",
+         "", "", "", "نوشهر", ""] for i in range(1, n_rows + 1)]
+    big = os.path.join(big_tmp, "01_Parties_big.xlsx")
+    write_workbook(big, grid)
+
+    con2 = build_db(os.path.join(big_tmp, "scale.db"))
+    con2.execute("PRAGMA foreign_keys = ON")
+    seed_codes = [r[0] for r in con2.execute(
+        "SELECT code FROM parties ORDER BY code")]
+    t0 = time.time()
+    out = E.import_file(con2, big)
+    elapsed = time.time() - t0
+    if out.created != n_rows or out.errors:
+        failures.append(f"مقیاس: {out.created}/{n_rows} سند، {out.errors[:2]}")
+    else:
+        print(f"OK    مقیاس: {out.created} شخص در {elapsed:.2f}s "
+              f"({out.created / elapsed:.0f} ردیف/ثانیه)")
+
+    rb = E.rollback_batch(con2, out.batch_id)
+    left = con2.execute(
+        "SELECT COUNT(*) FROM parties WHERE code LIKE 'S%'").fetchone()[0]
+    after_codes = [r[0] for r in con2.execute(
+        "SELECT code FROM parties ORDER BY code")]
+    if left != 0:
+        failures.append(f"برگشت: {left} ردیف از دسته باقی ماند")
+    if after_codes != seed_codes:
+        failures.append("برگشت ردیف‌های غیرِ دسته را هم دست زد")
+    if rb.failed:
+        failures.append(f"برگشت: {rb.failed} خطا")
+    else:
+        print(f"OK    برگشت دقیق: صفر ردیف باقی، داده پایه دست‌نخورده")
+    if con2.execute("PRAGMA foreign_key_check").fetchall() != []:
+        failures.append("پس از برگشت، FK شکسته است")
+    con2.close()
+
     con.close()
 
     print()
