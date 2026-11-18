@@ -1,0 +1,10 @@
+# Optional dependencies for the checks that can run without .NET.
+#
+# Without these, tools/check_contract_parity.py still compares the contract and
+# the writers, but cannot parse the C# files, so a syntax error would go
+# unnoticed. It says so with a NOTE rather than failing — but installing these
+# makes the gate complete.
+#
+#   python3 -m pip install --break-system-packages -r tools/requirements.txt
+tree_sitter
+tree_sitter_c_sharp

@@ -199,3 +199,23 @@ Contract parity compared field definitions. It did not compare what the writers
 actually insert, which is the thing that produces wrong rows. All 18 target
 tables now compare column-for-column in both languages. Proven by deleting one
 column from the C# writer and watching the check fail.
+
+### NEW-10 — the .NET build was attempted, and honestly failed
+
+Seven routes were tried to get a C# compiler into this sandbox. One worked
+partially: the .NET Core 2.0 **runtime** downloaded and ran (`dotnet --info`
+answered). No compiler was obtainable — the SDK tarball from npm is missing
+`libunwind`, libunwind's own CMake in that tag supports Visual Studio only, and
+Debian's repositories are network-blocked.
+
+More importantly, a compiler would not have settled it: the target is WPF on
+.NET Framework 4.8 / Windows 8.1, which cannot be built or run on Linux at all.
+
+Full account, including the one route that worked, in
+`reports/CSHARP_BUILD_ATTEMPT_FA.md`. Status is unchanged: **IMPLEMENTED /
+NOT RUN**, and the three parity guards are what keep that gap from widening.
+
+Also fixed this pass: a missing optional dependency (`tree_sitter`) used to turn
+the whole gate red with a message that said nothing about the repository. It is
+a NOTE with the install command now, and the PASS line states plainly that
+syntax was not checked.
