@@ -231,3 +231,50 @@ That last property is the one worth testing. A rollback that "works" by
 deleting too much is worse than one that fails loudly, and a row count alone
 cannot tell the difference. The test compares the full set of party codes
 before and after, not just the totals.
+
+## NEW-12 — نوزده KPI داشبورد، اثبات‌شده روی اسکیمای واقعی
+
+`agents/A_dashboard_queries.py` نوشته و اجرا شد. ۵/۵:
+- خالی: همه صفر (بدون None، بدون استثنا)
+- تفکیک: ۱٬۰۰۰٬۰۰۰ تأییدشده + ۴۰۰٬۰۰۰ بررسی‌نشده = ۱٬۴۰۰٬۰۰۰
+- ابطال‌شده در هیچ سبدی شمرده نمی‌شود
+- خارج از بازه حذف می‌شود (۳۰ روز پیش با `days=1` صفر، با `days=60` ۷۰۰٬۰۰۰)
+- هر ۱۹ کوئری معتبر
+
+در همین اجرا یک شاخص بیستم (`bank_balance`) پیدا و حذف شد: مشخصات فصل ۱۱
+دقیقاً نوزده می‌خواهد و اضافه‌کردن عدد بیستم به لیستی که UI با موقعیت
+رندر می‌شود، یعنی عدد درست زیر برچسب غلط.
+
+## NEW-13 — SQL فایل C# همان اعداد پایتون را می‌دهد
+
+`tools/test_dashboard_cs_sql.py`: SQL را با پیمایش پرانتز متوازن از
+`SqliteDashboardStore.cs` بیرون می‌کشد، با `Make("<key>", ..., var)` به کلید
+وصل می‌کند، روی دیتابیس واقعی اجرا می‌کند، و سطر به سطر با مرجع مقایسه
+می‌کند. نتیجه: **۱۹ KPI، همه یکسان**.
+
+جهش‌آزمایی: `VOIDED` به سبد بررسی‌نشده اضافه شد → `sales` از ۱٬۴۰۰٬۰۰۰ به
+۲٬۳۹۹٬۰۰۰ رفت و دروازه قرمز شد. بازگردانده شد → سبز.
+
+## NEW-14 — بازرس XAML، بدون کامپایلر
+
+`tools/check_xaml.py --strict`: ۵ فایل، ۶۷ توکن، ۰ خطا. پنج باگ واقعی پیدا
+کرد (فهرست در `DASHBOARD_ROUND_FA.md`). هر قاعده با تزریق خطای عمدی آزموده
+شد: منبع ناموجود، رویداد بی‌متد، رنگ خام، TargetType ناسازگار.
+
+## NEW-15 — دروازه‌ها از ۹ به ۱۳ رسید
+
+`python3 tools/verify_all.py` → exit 0. چهار دروازه تازه: KPI پایتون، parity
+SQL، اعداد SQL استخراج‌شده از C#، بازرس XAML.
+
+## NEW-16 — سانحه بازنشانی ساندباکس، بار دوم
+
+ساندباکس وسط کار بازنشانی شد: HEAD به `62ad947` بازگشت و **همه ویرایش‌های
+فایل‌های tracked پاک شدند**؛ فقط فایل‌های نو (untracked) جان سالم بردند.
+
+بازیابی: `git fetch` + `git reset --hard FETCH_HEAD` شاخه را برگرداند، ولی
+ویرایش‌های این دور را برنگرداند. فایل‌های نو (Theme.v2، SqliteDashboardStore،
+agents/، tools/ سه‌گانه) سالم بودند؛ هفت فایل tracked از محتوای موجود بازنویسی
+شدند. پس از بازیابی، `verify_all.py` دوباره ۱۳/۱۳ سبز شد.
+
+درس عملی: در این محیط، کار روی فایل tracked تا لحظه commit شکننده است. باید
+زودتر و بیشتر commit شود.

@@ -25,6 +25,11 @@ STEPS = [
     ("ستون‌های C# ↔ اسکیما", ["tools/check_csharp_schema.py"]),
     ("ستون‌های قرارداد ↔ اسکیما", ["tools/check_contract_schema.py"]),
     ("گراف ارجاع پروژه‌ها", ["tools/check_project_refs.py"]),
+    # --- dashboard round: the UI layer, which has no compiler here ---
+    ("نوزده KPI داشبورد روی اسکیمای واقعی", ["agents/A_dashboard_queries.py"]),
+    ("SQL داشبورد: پایتون ↔ C# یکسان", ["tools/check_dashboard_parity.py"]),
+    ("اعداد SQL استخراج‌شده از C#", ["tools/test_dashboard_cs_sql.py"]),
+    ("سالم‌بودن XAML (بدون کامپایلر)", ["tools/check_xaml.py", "--strict"]),
 ]
 
 

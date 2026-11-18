@@ -1,0 +1,109 @@
+<Window x:Class="Mazandasht.Presentation.Tools.ToolsWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="مرکز ابزارها — مازندشت"
+        Width="1040" Height="720"
+        FlowDirection="RightToLeft" WindowStartupLocation="CenterOwner"
+        Background="{StaticResource AppBackgroundBrush}"
+        FontFamily="{StaticResource PersianFont}">
+    <Window.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="../Design/Theme.v2.xaml"/>
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </Window.Resources>
+
+    <Grid Margin="20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <TextBlock Grid.Row="0" Text="مرکز ابزارها"
+                   Style="{StaticResource SectionTitleStyle}" FontSize="24"/>
+
+        <TextBlock Grid.Row="1" Style="{StaticResource MutedLabelStyle}"
+                   TextWrapping="Wrap" Margin="0,0,0,14"
+                   Text="هر ابزار سه چیز می‌گوید: چه می‌کند، آخرین بار چه زمانی اجرا شد، و آیا همین حالا سالم است."/>
+
+        <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto">
+            <StackPanel>
+                <ItemsControl x:Name="ToolItems">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <UniformGrid Columns="2"/>
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Border Style="{StaticResource PanelStyle}">
+                                <Grid>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                    </Grid.RowDefinitions>
+                                    <DockPanel Grid.Row="0" LastChildFill="False">
+                                        <TextBlock Text="{Binding Title}"
+                                                   FontSize="{StaticResource FontSubtitle}"
+                                                   FontWeight="SemiBold"
+                                                   Foreground="{StaticResource TextBrush}"
+                                                   DockPanel.Dock="Right"/>
+                                        <Border DockPanel.Dock="Left" CornerRadius="999"
+                                                Padding="9,2"
+                                                Background="{Binding StateToken}">
+                                            <TextBlock Text="{Binding StateText}"
+                                                       FontSize="{StaticResource FontMicro}"
+                                                       Foreground="{StaticResource TextBrush}"/>
+                                        </Border>
+                                    </DockPanel>
+                                    <TextBlock Grid.Row="1" Text="{Binding Summary}"
+                                               Style="{StaticResource MutedLabelStyle}"
+                                               TextWrapping="Wrap" Margin="0,8,0,0"/>
+                                    <TextBlock Grid.Row="2" Text="{Binding LastRun}"
+                                               FontSize="{StaticResource FontMicro}"
+                                               Foreground="{StaticResource FaintTextBrush}"
+                                               Margin="0,8,0,0"/>
+                                </Grid>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+
+                <Border Style="{StaticResource PanelStyle}" Margin="6,14,6,6">
+                    <StackPanel>
+                        <TextBlock Text="گزارش‌های معلق"
+                                   FontSize="{StaticResource FontSubtitle}"
+                                   FontWeight="SemiBold"
+                                   Foreground="{StaticResource DangerBrush}"/>
+                        <TextBlock Style="{StaticResource MutedLabelStyle}"
+                                   TextWrapping="Wrap" Margin="0,6,0,10"
+                                   Text="این گزارش‌ها ساخته نشده‌اند. دلیل، نه دکمه‌ای که پنجره خالی باز کند."/>
+                        <ItemsControl x:Name="ReportItems">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <DockPanel Margin="0,4">
+                                        <TextBlock Text="{Binding Reason}"
+                                                   DockPanel.Dock="Left"
+                                                   FontSize="{StaticResource FontMicro}"
+                                                   Foreground="{StaticResource FaintTextBrush}"/>
+                                        <TextBlock Text="{Binding Title}"
+                                                   FontSize="{StaticResource FontBody}"
+                                                   Foreground="{StaticResource TextBrush}"/>
+                                    </DockPanel>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+        </ScrollViewer>
+
+        <TextBlock x:Name="StatusText" Grid.Row="3"
+                   Style="{StaticResource MutedLabelStyle}"
+                   Margin="0,12,0,0" TextTrimming="CharacterEllipsis"/>
+    </Grid>
+</Window>
