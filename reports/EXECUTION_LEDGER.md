@@ -344,3 +344,38 @@ agents/، tools/ سه‌گانه) سالم بودند؛ هفت فایل tracked 
 `INotifyPropertyChanged`.
 
 ## NEW-24 — دروازه‌ها از ۱۶ به ۱۷
+
+## NEW-25 — قاعده «خالی ≠ صفر» در اسکیما نقض می‌شد
+
+`amount_rial INTEGER NOT NULL DEFAULT 0` در چهارده ستون از نه جدول. درج
+بدون مبلغ، صفر ذخیره می‌کرد. تست گزارش‌ها این را نتوانست بسازد:
+`NOT NULL constraint failed: cheques.amount_rial`.
+
+مهاجرت `006_amount_nullable.sql` نوشته شد؛ DDL **از اسکیمای زنده تولید شد**
+نه دستی. سه شکست راهنما بود:
+- `bank_transactions_new has 11 columns but 26 values` (حدس شکل جدول)
+- `error in view v_lot_lookup: no such table: main.lots`
+- `error in trigger trg_invoice_number_unique_sales: no such table`
+- `table "basket_movements" already exists` (نام کوتیشن‌دار)
+
+`tools/test_migration_006.py` → ۱۰/۱۰. جهش: بازگرداندن NOT NULL → ۸/۱۰.
+
+## NEW-26 — شش گزارش ساخته شد (BLOCKED-02 شش‌هفتم باز شد)
+
+فایل‌های مالک دوباره خوانده شد؛ شش گزارش ستون‌های کامل داشتند و سند اشتباه
+می‌گفت «استخراج نشده». `tools/reports_engine.py` + `tools/test_reports.py` →
+۱۲/۱۲. فقط `Financial/Report` واقعاً خالی است و استثنا می‌اندازد.
+
+## NEW-27 — دو باگ در گزارش‌ها
+
+- تراز آزمایشی: فیلتر VOIDED در WHERE بود؛ حساب با فقط سند ابطال‌شده از
+  گزارش **ناپدید** می‌شد. به ON منتقل شد.
+- گزارش سبد: پرداخت را از `basket_movements` می‌خواند، جایی که پرداخت پول
+  نیست. فروشنده تا ابد تسویه‌نشده می‌ماند. به `payments` منتقل شد.
+
+## NEW-28 — `SCHEMA_VERSION` از دیسک مشتق می‌شود
+
+عدد ثابت ۵ بود؛ هر مهاجرت تازه دو دروازه را می‌شکست. اکنون
+`max(migration_files())`.
+
+## NEW-29 — دروازه‌ها از ۱۷ به ۱۹

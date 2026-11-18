@@ -35,6 +35,8 @@ STEPS = [
     ("جریان مرکز واردسازی سرتاسری", ["tools/test_import_centre_flow.py"]),
     ("ردپای حسابرسی (فصل ۱۰)", ["tools/test_audit_trail.py"]),
     ("کوئری‌های صفحه ابزارها", ["tools/test_tools_probe.py"]),
+    ("مهاجرت ۰۰۶ — ستون پولی nullable", ["tools/test_migration_006.py"]),
+    ("شش گزارش مالی", ["tools/test_reports.py"]),
 ]
 
 

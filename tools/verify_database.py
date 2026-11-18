@@ -27,7 +27,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SCHEMA = os.path.join(ROOT, "database", "schema", "schema_v001.sql")
 SEED = os.path.join(ROOT, "database", "seed", "seed_v001.sql")
 MIGRATION_DIR = os.path.join(ROOT, "database", "migrations")
-SCHEMA_VERSION = 5
+
 
 RESULTS = []
 
@@ -62,6 +62,21 @@ def migration_files():
             out.append((int(prefix), os.path.join(MIGRATION_DIR, name)))
     out.sort()
     return out
+
+
+def _schema_version():
+    """
+    The highest migration number on disk, not a hand-kept constant.
+
+    This used to be `SCHEMA_VERSION = 5`, and adding a migration broke two
+    gates with a message implying the CODE was wrong rather than the version
+    being stale. A number that must be edited in a second place will go stale;
+    derive it from the files the runner actually executes.
+    """
+    return max(v for v, _ in migration_files())
+
+
+SCHEMA_VERSION = _schema_version()
 
 
 def apply_migrations(con):
