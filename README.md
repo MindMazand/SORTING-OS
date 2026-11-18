@@ -27,10 +27,12 @@
 | موتور واردسازی Excel (۷ مرحله) | ✅ IMPLEMENTED + TESTED | `tools/xlsx_io.py`, `import_contract.py`, `import_parser.py`, `import_engine.py` → `tools/test_import.py` **39/39 PASS** · `reports/STAGE_IMPORT_ENGINE_FA.md` |
 | پورت C# موتور واردسازی | 🟡 IMPLEMENTED / NOT RUN | ۸ فایل در `src/Mazandasht.Application/Import/` + `SqliteImportStore.cs` + `SqliteImportBatchStore.cs`. نحو، تطبیق قرارداد (۱۲۹ ستون)، و ستون‌های اسکیما (۱۸۷) PASS — اما **کامپایل/اجرا نشده** · `reports/STAGE_CSHARP_PORT_FA.md` |
 | پیش‌نیاز اختیاری | `python3 -m pip install --break-system-packages -r tools/requirements.txt` — بدون آن، بررسی صحت نحوی C# رد می‌شود ولی بقیه دروازه‌ها کار می‌کنند |
-| بررسی‌های بدون .NET | ✅ ۲۲ دروازه | `python3 tools/verify_all.py` → اسکیما ۴۰/۴۰ · واردسازی ۳۹/۳۹ · تطبیق قرارداد · ستون↔اسکیما+طرح برگشت · نگاشت قرارداد↔اسکیما · ارجاع پروژه‌ها · زنجیره ۱۱ قالب · قالب‌های واقعی مالک · بردارهای طلایی · **۱۹ KPI داشبورد** · **parity SQL پایتون↔C#** · **اعداد SQL استخراج‌شده از C#** · **بازرس XAML** · **دامنه تأیید برگشت** · **جریان مرکز واردسازی** · **ردپای حسابرسی** · **کوئری‌های صفحه ابزارها** · **مهاجرت ۰۰۶ ستون پولی** · **شش گزارش مالی** · **SQL گزارش‌ها در C#** · **ناوبری بی‌اثر** · **هم‌ترازی گزارش‌ها** |
+| بررسی‌های بدون .NET | ✅ ۲۳ دروازه | `python3 tools/verify_all.py` → اسکیما ۴۰/۴۰ · واردسازی ۳۹/۳۹ · تطبیق قرارداد · ستون↔اسکیما+طرح برگشت · نگاشت قرارداد↔اسکیما · ارجاع پروژه‌ها · زنجیره ۱۱ قالب · قالب‌های واقعی مالک · بردارهای طلایی · **۱۹ KPI داشبورد** · **parity SQL پایتون↔C#** · **اعداد SQL استخراج‌شده از C#** · **بازرس XAML** · **دامنه تأیید برگشت** · **جریان مرکز واردسازی** · **ردپای حسابرسی** · **کوئری‌های صفحه ابزارها** · **مهاجرت ۰۰۶ ستون پولی** · **شش گزارش مالی** · **SQL گزارش‌ها در C#** · **ناوبری بی‌اثر** · **هم‌ترازی گزارش‌ها** · **سازگاری زبان C#** |
 | فرهنگ داده (فصل ۱۸) | ✅ تولیدشده | `docs/DATA_DICTIONARY_FA.md` — با `tools/gen_data_dictionary.py` از اسکیمای واقعی ساخته می‌شود، دستی نیست |
 | تأیید مالک برای `party_kind` | ⏳ منتظر مالک | ردیف‌های موجود با `party_kind_confirmed=0` علامت خورده‌اند؛ مالک باید مرور کند (DEC-NEW-011) |
 | گزارش‌های مالی (BLOCKED-02) | 🟡 ۶ از ۷ + رابط | **شش گزارش ساختار کامل داشتند** و ساخته شدند (پایتون ۱۳/۱۳، C# ۸/۸، هم‌ترازی ۷/۷) و به رابط وصل شدند: `ReportsWindow`. فقط `Financial.xlsx → Report` واقعاً خالی است. `reports/REPORTS_UI_ROUND_FA.md` |
+
+**برای ساخت و اجرا روی ویندوز: `reports/RUN_ON_WINDOWS_FA.md`** — دستور مو‌به‌مو از نصب ۴.۸ تا اجرای برنامه و پنج چیزی که باید امتحان کنید.
 
 **وضعیت فعلی و کارهای بعدی: `reports/HANDOFF_NEXT_FA.md`**
 
@@ -46,7 +48,9 @@
 > پیاده‌سازی **پایتون** روی فایل‌های **واقعی** مالک می‌آیند.
 
 
-1. Visual Studio 2019+ با .NET Framework 4.8 SDK و WPF را نصب کنید.
+> **۴.۷ کافی نیست.** پروژه `net48` است. جزئیات و عیب‌یابی نصب: `reports/RUN_ON_WINDOWS_FA.md` §0.
+
+1. Visual Studio 2019 با workload «.NET desktop development» و .NET Framework 4.8 SDK.
 2. `src/Mazandasht.sln` را باز و Build کنید (x64).
 3. تست‌ها: `dotnet test src/Mazandasht.Tests` (یا Test Explorer).
 4. دیتابیس اولیه از `database/schema/schema_v001.sql` + `database/seed/seed_v001.sql` ساخته می‌شود (MigrationRunner).

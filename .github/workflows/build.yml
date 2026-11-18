@@ -1,0 +1,121 @@
+name: build
+
+# WHY THIS EXISTS
+#
+# Every green number in this repository comes from Python. The C# has never
+# been compiled — not once, on any machine. That is the single largest unknown
+# left in the project, and it does not need Visual Studio on Windows 8.1 to
+# resolve: a GitHub runner is Windows Server 2022 with .NET Framework 4.8 and
+# the MSBuild that ships with Visual Studio Build Tools already installed.
+#
+# So this workflow answers one question and only one: DOES IT COMPILE?
+#
+# It is NOT a claim that the app works. A successful build here proves the
+# compiler accepts the code. It does not prove a window renders, a binding
+# resolves at runtime, or a report returns the right rows. Those still need a
+# human at a screen — see reports/RUN_ON_WINDOWS_FA.md §6.
+#
+# The six Python claim-gates run first and are cheap: if the code is
+# self-inconsistent there is no point spending a runner minute on MSBuild.
+
+on:
+  push:
+    branches: [ main, 'arena/**' ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  claims:
+    name: Python claim-gates (no .NET needed)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      # The syntax gate needs tree-sitter; everything else is stdlib.
+      - name: Install parser
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r tools/requirements.txt || true
+
+      - name: Run every gate
+        run: python tools/verify_all.py
+
+  build:
+    name: Compile net48 (x64) — the first real compiler run
+    runs-on: windows-latest
+    needs: claims
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Show toolchain versions
+        shell: pwsh
+        run: |
+          Get-ChildItem "C:\Program Files (x86)\Reference Assemblies\Microsoft\Framework\.NETFramework" -Name
+          & "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe" -latest -products * -property installationPath
+
+      - name: Restore
+        shell: pwsh
+        run: dotnet restore src\Mazandasht.sln
+
+      # MSBuild, not `dotnet build`: a net48 WPF project builds more reliably
+      # under the Visual Studio MSBuild that ships on the runner than under the
+      # dotnet CLI's bundled one, which does not always resolve the WPF targets.
+      - name: Build (Debug|x64)
+        shell: pwsh
+        run: |
+          $msbuild = & "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe" `
+            -latest -products * -requires Microsoft.Component.MSBuild -find MSBuild\**\Bin\MSBuild.exe `
+            | Select-Object -First 1
+          Write-Host "MSBuild: $msbuild"
+          & $msbuild src\Mazandasht.sln /p:Configuration=Debug /p:Platform=x64 `
+            /v:minimal /nologo /p:TreatWarningsAsErrors=false
+
+      # Build output is the artifact the owner actually needs: without it they
+      # have to install Visual Studio on Windows 8.1 just to find out whether
+      # anything works. With it, they can double-click Mazandasht.exe.
+      - name: Collect the runnable output
+        if: success()
+        shell: pwsh
+        run: |
+          $exe = Get-ChildItem -Path src -Recurse -Filter Mazandasht.exe |
+                 Where-Object { $_.FullName -match 'x64' } | Select-Object -First 1
+          if (-not $exe) { throw "Mazandasht.exe not found after a successful build" }
+          Write-Host "Found $($exe.FullName)"
+          # The whole output folder, not just the exe: WPF needs its
+          # .dll/.config/resources next to it, and System.Data.SQLite needs its
+          # native interop DLL per architecture.
+          $out = Split-Path $exe.FullName
+          Copy-Item $out -Destination build-output -Recurse
+          Write-Host "Packed $((Get-ChildItem build-output -Recurse -File).Count) files"
+
+      - name: Upload runnable app
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: Mazandasht-win-x64
+          path: build-output/
+          retention-days: 30
+
+      # Tests are separate on purpose: a failing test must not make it look
+      # like the code does not compile. They answer different questions.
+      - name: Run xUnit tests
+        shell: pwsh
+        continue-on-error: true
+        run: |
+          dotnet test src\Mazandasht.Tests\Mazandasht.Tests.csproj `
+            --configuration Debug --no-build --logger "console;verbosity=detailed"
+
+      - name: Build log on failure
+        if: failure()
+        shell: pwsh
+        run: |
+          Write-Host "::group::Compile diagnostics"
+          Get-ChildItem -Path src -Recurse -Filter *.log -ErrorAction SilentlyContinue |
+            ForEach-Object { Write-Host "--- $($_.Name)"; Get-Content $_.FullName -Tail 200 }
+          Write-Host "::endgroup::"

@@ -40,6 +40,7 @@ STEPS = [
     ("SQL گزارش‌ها در C#", ["tools/test_reports_cs_sql.py"]),
     ("ناوبری: هیچ دکمه‌ای بی‌اثر نیست", ["tools/test_nav_actions.py"]),
     ("هم‌ترازی گزارش‌ها: پایتون ↔ C#", ["tools/test_reports_parity.py"]),
+    ("سازگاری زبان C# با 7.3", ["tools/check_csharp_lang.py"]),
 ]
 
 
