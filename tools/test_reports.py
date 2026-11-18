@@ -289,7 +289,42 @@ def t_unknown_report_id_is_a_different_failure():
     raise AssertionError("شناسه ناشناخته باید KeyError بدهد، نه گزارش خالی")
 
 
+def t_balance_sheet_baskets_asset_nets_the_payments():
+    """
+    The balance sheet must show the baskets asset NET of what has been paid.
+
+    This bug shipped once: `baskets_report()` was fixed to read payments from
+    `payments`, and `accounting_balance()` was left reading a PAYMENT row out of
+    basket_movements — which can never exist. The baskets asset then equalled
+    the gross purchase total, overstating assets by exactly the amount already
+    paid. It surfaced because the control came out at -165,000,000 on a dataset
+    where nothing else had moved.
+
+    The rule this test enforces: fix a bug in one report, grep for the twin.
+    """
+    con = fresh()
+    pid = add_party(con, "S010")
+    add_basket_move(con, pid, "PURCHASE", 65000000, "1405-07-02")
+    add_seller_payment(con, pid, 30000000)
+
+    r = R.accounting_balance(con)
+    baskets_row = [x for x in r["rows"] if x["code"] == "s"][0]
+    assert baskets_row["amount"] == 35000000, (
+        "دارایی سبد باید خالص پرداخت باشد: انتظار ۳۵٬۰۰۰٬۰۰۰، دریافت %r"
+        % (baskets_row["amount"],))
+
+    # And a voided payment must not reduce it.
+    con.execute("UPDATE payments SET status='VOIDED' WHERE amount_rial=30000000")
+    con.commit()
+    r2 = R.accounting_balance(con)
+    baskets2 = [x for x in r2["rows"] if x["code"] == "s"][0]
+    assert baskets2["amount"] == 65000000, (
+        "پرداخت ابطال‌شده نباید از دارایی کم شود: %r" % (baskets2["amount"],))
+    con.close()
+
+
 TESTS = [
+    ("دارایی سبد در ترازنامه خالص پرداخت است", t_balance_sheet_baskets_asset_nets_the_payments),
     ("شش گزارش موجود و یکی ناموجود، با دلیل", t_six_reports_exist_and_one_does_not),
     ("ستون‌ها عیناً مطابق فایل مالک", t_columns_match_the_owner_workbook),
     ("وضعیت چک از paid_date محاسبه می‌شود", t_cheque_status_is_computed_from_paid_date),

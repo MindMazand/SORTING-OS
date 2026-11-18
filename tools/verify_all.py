@@ -37,6 +37,9 @@ STEPS = [
     ("کوئری‌های صفحه ابزارها", ["tools/test_tools_probe.py"]),
     ("مهاجرت ۰۰۶ — ستون پولی nullable", ["tools/test_migration_006.py"]),
     ("شش گزارش مالی", ["tools/test_reports.py"]),
+    ("SQL گزارش‌ها در C#", ["tools/test_reports_cs_sql.py"]),
+    ("ناوبری: هیچ دکمه‌ای بی‌اثر نیست", ["tools/test_nav_actions.py"]),
+    ("هم‌ترازی گزارش‌ها: پایتون ↔ C#", ["tools/test_reports_parity.py"]),
 ]
 
 

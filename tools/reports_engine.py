@@ -500,16 +500,30 @@ def accounting_balance(con):
     expenses = _account_balance(con, _ACCOUNT_CODES["expenses"])
 
     # Baskets ledger: sum of every seller's final balance.
+    #
+    # THE PAYMENTS ARE NOT IN basket_movements. This block used to look for
+    # `event_type = 'PAYMENT'` there, which can never match: the column is
+    # CHECKed to basket events and a money payment lives in `payments`. The
+    # result was a baskets asset equal to the full purchase total — the seller
+    # looked unpaid forever and the balance sheet overstated assets by exactly
+    # the amount already paid. The same bug was fixed in baskets_report() and
+    # left here; the balance sheet caught it because the control went to
+    # -165,000,000 on a dataset where nothing else had moved.
     basket_row = con.execute("""
-        SELECT COALESCE(SUM(CASE WHEN event_type <> 'PAYMENT'
-                                 THEN amount_rial ELSE 0 END), 0),
-               COALESCE(SUM(CASE WHEN event_type = 'PAYMENT'
-                                 THEN amount_rial ELSE 0 END), 0)
+        SELECT COALESCE(SUM(amount_rial), 0), COUNT(*)
           FROM basket_movements
     """).fetchone()
-    basket_purchase, basket_paid = basket_row[0] or 0, basket_row[1] or 0
+    basket_purchase = basket_row[0] or 0
+    basket_has_rows = (basket_row[1] or 0) > 0
+    paid_row = con.execute("""
+        SELECT COALESCE(SUM(amount_rial), 0), COUNT(*)
+          FROM payments
+         WHERE direction = 'OUT'
+           AND COALESCE(status, 'APPROVED') != 'VOIDED'
+    """).fetchone()
+    basket_paid = paid_row[0] or 0
     baskets_value = None
-    if basket_purchase or basket_paid:
+    if basket_has_rows:
         baskets_value = basket_purchase - basket_paid
 
     # Uncleared cheques: use the same computed status as the cheque reports.

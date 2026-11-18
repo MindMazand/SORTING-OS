@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="utf-8">
+<title>مازندشت — پیش‌نمایش گزارش‌ها</title>
+<style>
+/*
+  PREVIEW ONLY — not the product.
+
+  WPF cannot render in this sandbox (net48 / Windows 8.1 only), so this page
+  makes the reports layout reviewable. Every colour is copied from
+  src/Mazandasht.Presentation/Design/Theme.v2.xaml and the layout matches
+  ReportsWindow.xaml. If they disagree, the XAML is the deliverable and this
+  file is what needs fixing.
+
+  THE DATA IS REAL. Every table below was produced by running
+  tools/reports_engine.py against a database built by the real migrations,
+  with rows inserted for this preview. Nothing is invented: the cheque statuses
+  are computed from paid_date, the basket balance uses the cumulative-payment
+  rule, and the control figure is the one the engine actually returns.
+*/
+:root{
+  --brand:#075E1E; --brand-tint:#E8F0E9; --on-brand-muted:#CDE8D2;
+  --app-bg:#F2F5F3; --surface:#FFFFFF; --surface-alt:#F7FAF8;
+  --glass:rgba(255,255,255,.80); --hairline:rgba(0,0,0,.13);
+  --text:#1A1A1A; --muted:#666666; --faint:#9A9A9A;
+  --warning:#8A6D1F; --danger:#A61B1B; --success:#1E7A34;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:"Segoe UI",Tahoma,Arial,sans-serif;background:var(--app-bg);
+     color:var(--text);height:100vh;display:flex;flex-direction:column;overflow:hidden}
+header{padding:18px 22px 10px}
+header h1{font-size:23px;font-weight:700;letter-spacing:-.2px}
+header p{font-size:12px;color:var(--muted);margin-top:6px}
+
+main{flex:1;display:grid;grid-template-columns:300px 1fr;gap:14px;padding:0 22px 12px;min-height:0}
+
+/* ---------- picker ---------- */
+.picker{background:var(--surface);border:1px solid var(--hairline);border-radius:14px;
+        padding:14px;display:flex;flex-direction:column;min-height:0}
+.picker h2{font-size:13px;font-weight:600;margin-bottom:10px}
+.card{padding:10px 12px;border:1px solid var(--hairline);border-radius:10px;
+      background:var(--glass);margin-bottom:6px;cursor:pointer}
+.card:hover{background:var(--brand-tint)}
+.card.sel{background:var(--brand-tint);border-color:var(--brand)}
+.card .t{font-size:13px;font-weight:600}
+.card .r{font-size:11px;color:var(--warning);margin-top:5px;line-height:1.5}
+.card.na{opacity:.72;cursor:not-allowed}
+.card.na:hover{background:var(--glass)}
+.hint{margin-top:auto;font-size:11px;color:var(--muted);padding-top:10px}
+
+/* ---------- report ---------- */
+.report{background:var(--surface);border:1px solid var(--hairline);border-radius:14px;
+        padding:14px;display:flex;flex-direction:column;min-height:0}
+.bar{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.btn{border:1px solid var(--hairline);background:var(--glass);border-radius:8px;
+     padding:6px 12px;font-size:12px;font-family:inherit;cursor:pointer}
+.btn.primary{background:var(--brand);color:#fff;border-color:var(--brand)}
+.desc{font-size:11px;color:var(--muted);margin-bottom:10px;line-height:1.6}
+
+table{width:100%;border-collapse:collapse;font-size:12px;overflow:auto}
+thead th{position:sticky;top:0;background:var(--surface-alt);text-align:right;
+         padding:8px 10px;font-weight:600;border-bottom:1px solid var(--hairline);
+         white-space:nowrap;font-size:11px}
+tbody td{padding:7px 10px;border-bottom:1px solid rgba(0,0,0,.05);white-space:nowrap}
+tbody tr:hover{background:var(--surface-alt)}
+.num{font-family:"Segoe UI",Tahoma;direction:ltr;text-align:right;font-variant-numeric:tabular-nums}
+.dash{color:var(--faint)}
+.cleared{color:var(--success);font-weight:600}
+.uncleared{color:var(--danger);font-weight:600}
+
+.foot{margin-top:10px;padding:10px 12px;border:1px solid var(--hairline);
+      border-radius:10px;background:var(--glass);font-size:12px;font-weight:600}
+.warn{margin-top:8px;font-size:11px;color:var(--warning);line-height:1.7;
+      padding:8px 10px;border-right:3px solid var(--warning);background:#FFF9E8;border-radius:6px}
+.scroll{overflow:auto;flex:1;min-height:0}
+.status{font-size:11px;color:var(--muted);padding:10px 22px 14px}
+.note{font-size:11px;color:var(--faint);margin-top:8px;line-height:1.6}
+</style>
+</head>
+<body>
+<header>
+  <h1>گزارش‌ها</h1>
+  <p>شش گزارش ساخته شده — هر عدد در این صفحه از اجرای واقعی موتور روی پایگاه داده آمده است، نه از حافظه.</p>
+</header>
+
+<main>
+  <aside class="picker">
+    <h2>۱ — گزارش را انتخاب کنید</h2>
+    <div class="card sel" data-k="cheques_issues"><div class="t">چک‌های صادره</div></div>
+    <div class="card" data-k="cheques_month"><div class="t">گردش چک در بازه</div></div>
+    <div class="card" data-k="cheques_unpaid"><div class="t">چک‌های پاس‌نشده</div></div>
+    <div class="card" data-k="baskets_report"><div class="t">مانده حساب فروشنده سبد</div></div>
+    <div class="card" data-k="accounting_trial"><div class="t">تراز آزمایشی</div></div>
+    <div class="card" data-k="accounting_balance"><div class="t">ترازنامه</div></div>
+    <div class="card na"><div class="t">گزارش مالی</div>
+      <div class="r">ساختار این گزارش هنوز تعریف نشده است. در فایل Financial.xlsx شیت Report نوشته شده: «ساختار و ستون‌ها در انتظار تعریف کارفرما هستند».</div>
+    </div>
+    <div class="hint">کد فروشنده سبد: <b>S004</b> — باغدار نمونه</div>
+  </aside>
+
+  <section class="report">
+    <div class="bar">
+      <button class="btn primary">۲ — نمایش گزارش</button>
+      <button class="btn">خروجی CSV</button>
+      <strong id="title" style="font-size:13px;margin-right:auto"></strong>
+    </div>
+    <div class="desc" id="desc"></div>
+    <div class="scroll">
+      <table><thead id="thead"></thead><tbody id="tbody"></tbody></table>
+    </div>
+    <div class="foot" id="foot"></div>
+    <div class="warn" id="warn" style="display:none"></div>
+    <div class="note">این صفحه فقط برای بازبینی چیدمان است. محصول واقعی WPF است و در این محیط رندر نمی‌شود؛
+      تا زمانی که <code>dotnet build</code> روی ویندوز اجرا نشود، هر ادعا درباره پنجره یک فرض است.</div>
+  </section>
+</main>
+
+<div class="status" id="status"></div>
+
+<script>
+const DATA = {"cheques_issues": {"id": "cheques_issues", "title": "چک‌های صادره", "columns": ["شماره", "شماره چک", "تاریخ چک", "مبلغ (ریال)", "ذی‌نفع", "وضعیت (خودکار)", "توضیحات"], "rows": [{"no": 1, "cheque_number": "24012345", "cheque_date": "1405/07/10", "amount_rial": 80000000, "beneficiary": "باغدار نمونه", "status": "UNCLEARED", "notes": "خرید محصول"}, {"no": 2, "cheque_number": "24012346", "cheque_date": "1405/07/20", "amount_rial": 45000000, "beneficiary": "باغدار نمونه", "status": "CLEARED", "notes": "هزینه جاری"}, {"no": 3, "cheque_number": "24012347", "cheque_date": "1405/08/02", "amount_rial": 150000000, "beneficiary": "باغدار نمونه", "status": "UNCLEARED", "notes": "هزینه جاری"}], "totals": {"count": 3, "amount": 275000000}}, "cheques_month": {"id": "cheques_month", "title": "گردش چک در بازه", "columns": ["شماره", "تاریخ چک", "شماره چک", "مبلغ (ریال)", "وضعیت", "تاریخ پاس"], "range": {"from": null, "to": null}, "rows": [{"no": 1, "cheque_date": "1405/07/10", "cheque_number": "24012345", "amount_rial": 80000000, "status": "UNCLEARED", "cleared_on": ""}, {"no": 2, "cheque_date": "1405/07/20", "cheque_number": "24012346", "amount_rial": 45000000, "status": "CLEARED", "cleared_on": "1405/07/22"}, {"no": 3, "cheque_date": "1405/08/02", "cheque_number": "24012347", "amount_rial": 150000000, "status": "UNCLEARED", "cleared_on": ""}], "totals": {"all": 275000000, "cleared": 45000000, "uncleared": 230000000, "count": 3}}, "cheques_unpaid": {"id": "cheques_unpaid", "title": "چک‌های پاس‌نشده", "columns": ["شماره", "تاریخ چک", "شماره چک", "مبلغ (ریال)", "وضعیت", "تاریخ پاس"], "range": {"from": null, "to": null}, "rows": [{"no": 1, "cheque_date": "1405/07/10", "cheque_number": "24012345", "amount_rial": 80000000, "status": "UNCLEARED", "cleared_on": ""}, {"no": 2, "cheque_date": "1405/08/02", "cheque_number": "24012347", "amount_rial": 150000000, "status": "UNCLEARED", "cleared_on": ""}], "totals": {"sum": 230000000, "count": 2, "nearest_due": "1405/07/10"}}, "accounting_trial": {"id": "accounting_trial", "title": "تراز آزمایشی", "columns": ["ردیف", "حساب", "کد / کلید", "نوع", "جمع بدهکار (ریال)", "جمع بستانکار (ریال)", "مانده (ریال)", "وضعیت"], "rows": [{"no": 1, "account": "صندوق", "code": "1000", "type": "ASSET", "debit": null, "credit": null, "balance": 0, "state": "بسته"}, {"no": 2, "account": "بانک", "code": "1010", "type": "ASSET", "debit": 90000000, "credit": null, "balance": 90000000, "state": "بدهکار"}, {"no": 3, "account": "چک‌های دریافتی", "code": "1020", "type": "ASSET", "debit": 45000000, "credit": null, "balance": 45000000, "state": "بدهکار"}, {"no": 4, "account": "موجودی کالا", "code": "1100", "type": "ASSET", "debit": null, "credit": null, "balance": 0, "state": "بسته"}, {"no": 5, "account": "بدهکاران", "code": "1200", "type": "ASSET", "debit": 40000000, "credit": null, "balance": 40000000, "state": "بدهکار"}, {"no": 6, "account": "بستانکاران", "code": "2000", "type": "LIABILITY", "debit": null, "credit": null, "balance": 0, "state": "بسته"}, {"no": 7, "account": "چک‌های پرداختی", "code": "2100", "type": "LIABILITY", "debit": null, "credit": 45000000, "balance": -45000000, "state": "بستانکار"}, {"no": 8, "account": "سرمایه", "code": "3000", "type": "EQUITY", "debit": null, "credit": 130000000, "balance": -130000000, "state": "بستانکار"}, {"no": 9, "account": "فروش", "code": "4000", "type": "INCOME", "debit": null, "credit": null, "balance": 0, "state": "بسته"}, {"no": 10, "account": "خرید", "code": "5000", "type": "EXPENSE", "debit": null, "credit": null, "balance": 0, "state": "بسته"}, {"no": 11, "account": "هزینه‌ها", "code": "5100", "type": "EXPENSE", "debit": null, "credit": null, "balance": 0, "state": "بسته"}], "balanced": true, "totals": {"debit": 175000000, "credit": 175000000, "difference": 0, "accounts_with_movement": true}}, "accounting_balance": {"id": "accounting_balance", "title": "ترازنامه", "columns": ["بخش", "شرح", "کد طبقه", "مبلغ (ریال)"], "rows": [{"section": "دارایی", "desc": "موجودی نقدی بانک‌ها", "code": "b", "amount": 90000000}, {"section": "دارایی", "desc": "طلب از اشخاص (مانده بدهکار / پیش‌پرداخت)", "code": "p+", "amount": 40000000}, {"section": "دارایی", "desc": "سبد و ظروف (دفتر Baskets)", "code": "s", "amount": 35000000}, {"section": "دارایی", "desc": "دارایی‌های ثابت — زمین، خودرو، تجهیزات (F…)", "code": "f", "amount": null}, {"section": "بدهی", "desc": "دیون اشخاص (مانده بستانکار)", "code": "p-", "amount": null}, {"section": "بدهی", "desc": "اسناد چک پرداختی — پاس‌نشده", "code": "q", "amount": 230000000}, {"section": "بدهی", "desc": "وام‌ها و تسهیلات (L…)", "code": "l", "amount": null}, {"section": "بدهی", "desc": "متفرقه / در انتظار تعریف", "code": "m", "amount": null}, {"section": "حقوق صاحبان", "desc": "افتتاحیه (مانده اولیه بانک‌ها)", "code": "o", "amount": null}, {"section": "حقوق صاحبان", "desc": "سرمایه و آورده صاحبان (CAP…)", "code": "c", "amount": 130000000}, {"section": "حقوق صاحبان", "desc": "هزینه‌های دوره (کسری)", "code": "e", "amount": null}, {"section": "حقوق صاحبان", "desc": "تراکنش‌های شخصی قاسم", "code": "x", "amount": null}], "balanced": false, "totals": {"assets": 165000000, "liabilities": 230000000, "equity": 130000000, "control": -195000000, "quick_ratio": 0.39, "sales_inflow": null, "purchase_outflow": null, "period_expenses": null, "uncleared_cheques": 230000000, "cash_profit_approx": null}, "basis_note": "مبنای این ترازنامه نقدی است: درآمد فروش تا تطبیق با فاکتورها در «دیون اشخاص» می‌نشیند و هنوز سود شناسایی‌شده نیست؛ سود واقعی دوره = درآمد فاکتورشده (Sales) − بهای تمام‌شده (Purchases) − هزینه‌ها (Expenses)."}, "baskets_report": {"id": "baskets_report", "title": "مانده حساب فروشنده سبد", "subject": {"code": "S004", "name": "باغدار نمونه"}, "columns": ["شماره", "تاریخ", "نوع رویداد", "سند / بانک", "دریافت (ریال)", "تعداد", "فی (ریال)", "پرداخت (ریال)", "خرید سبز (ریال)", "مانده (ریال)", "توضیحات"], "rows": [{"no": 1, "date": "1405-07-02", "type": "PURCHASE", "doc": "", "received": null, "qty": 500, "unit_price": 80000, "paid": null, "purchase": 40000000, "balance": 10000000, "notes": "", "basket": "سبد ۵ کیلویی"}, {"no": 2, "date": "1405-07-09", "type": "PURCHASE", "doc": "", "received": null, "qty": 500, "unit_price": 80000, "paid": null, "purchase": 25000000, "balance": 35000000, "notes": "", "basket": "سبد ۵ کیلویی"}, {"no": 3, "date": "2026-07-15", "type": "پرداخت بانکی", "doc": null, "received": null, "qty": null, "unit_price": null, "paid": 30000000, "purchase": null, "balance": null, "notes": "", "basket": null}], "totals": {"purchase_total": 65000000, "paid_total": 30000000, "received_total": null, "final_balance": 35000000, "status": "بدهکار", "basket_count": 2, "purchase_rows": 2, "payment_rows": 1, "last_event": "2026-07-15"}}};
+
+const DESC = {
+  cheques_issues: "ثبت صدور هر چک با تاریخ، مبلغ، ذی‌نفع و وضعیت خودکار. وضعیت از تاریخ پاس محاسبه می‌شود و از ستون ذخیره‌شده خوانده نمی‌شود.",
+  cheques_month: "همه چک‌های یک بازه زمانی با سه جمع: کل، پاس‌شده، پاس‌نشده.",
+  cheques_unpaid: "فقط چک‌های پاس‌نشده، به ترتیب تاریخ، با جمع و نزدیک‌ترین سررسید.",
+  baskets_report: "خرید سبد، پرداخت‌های بانکی و مانده. مانده از قاعده فایل مالک پیروی می‌کند: جمع خرید تا این سطر منهای پرداخت‌های تجمعی.",
+  accounting_trial: "جمع بدهکار و بستانکار هر حساب با کنترل توازن. حسابی که فقط سند ابطال‌شده دارد از گزارش حذف نمی‌شود.",
+  accounting_balance: "دارایی، بدهی و حقوق صاحبان در سه بخش. بخش‌های دستی (دارایی ثابت، وام، افتتاحیه) در فایل مالک با حرف مشخص شده‌اند و برنامه آن‌ها را محاسبه نمی‌کند."
+};
+
+function fmtCell(v, colIndex, key){
+  if (v === null || v === undefined) return '<span class="dash">—</span>';
+  const s = String(v);
+  if (s === "—") return '<span class="dash">—</span>';
+  if (/^-?[\d,]+$/.test(s)) return '<span class="num">' + s + '</span>';
+  if (s === "پاس شده") return '<span class="cleared">' + s + '</span>';
+  if (s === "پاس نشده") return '<span class="uncleared">' + s + '</span>';
+  return s;
+}
+
+function totalsLine(d){
+  const t = d.totals || {};
+  const f = n => (n === null || n === undefined) ? "—" : Number(n).toLocaleString('en-US');
+  switch(d.id){
+    case "cheques_issues":
+      return "تعداد: " + f(t.count) + " · جمع مبلغ: " + f(t.amount);
+    case "cheques_month":
+      return "کل: " + f(t.all) + " · پاس‌شده: " + f(t.cleared) + " · پاس‌نشده: " + f(t.uncleared);
+    case "cheques_unpaid":
+      return "جمع: " + f(t.sum) + " · تعداد: " + f(t.count) + " · نزدیک‌ترین سررسید: " + (t.nearest_due || "—");
+    case "baskets_report":
+      return "جمع خرید: " + f(t.purchase_total) + " · جمع پرداخت: " + f(t.paid_total)
+        + " · جمع دریافت: " + f(t.received_total) + " · مانده نهایی: " + f(t.final_balance)
+        + " · وضعیت: " + (t.status || "—");
+    case "accounting_trial":
+      return "جمع بدهکار: " + f(t.debit) + " · جمع بستانکار: " + f(t.credit)
+        + " · اختلاف: " + f(t.difference) + (t.difference === 0 ? " ✓ متوازن" : " ✗ ناتراز");
+    case "accounting_balance":
+      return "جمع دارایی‌ها: " + f(t.assets) + " · جمع بدهی‌ها: " + f(t.liabilities)
+        + " · حقوق صاحبان: " + f(t.equity) + " · کنترل: " + f(t.control);
+  }
+  return "";
+}
+
+function render(key){
+  const d = DATA[key];
+  document.getElementById('title').textContent = d.title;
+  document.getElementById('desc').textContent = DESC[key] || "";
+
+  const thead = document.getElementById('thead');
+  thead.innerHTML = "<tr>" + d.columns.map(c => "<th>" + c + "</th>").join("") + "</tr>";
+
+  const tbody = document.getElementById('tbody');
+  if (d.rows.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="' + d.columns.length
+      + '" style="text-align:center;color:#9A9A9A;padding:24px">'
+      + 'در این بازه ردیفی نیست — این «صفر» نیست، «داده‌ای نیست» است.</td></tr>';
+  } else {
+    tbody.innerHTML = d.rows.map(row => {
+      const cells = typeof row === "object" && !Array.isArray(row)
+        ? [row.no, row.cheque_number || row.date, row.cheque_date || row.type,
+           row.amount_rial || row.balance, row.beneficiary || row.doc,
+           row.status || row.state, row.notes || ""]
+        : row;
+      return "<tr>" + cells.map((c, i) => "<td>" + fmtCell(c, i, key) + "</td>").join("") + "</tr>";
+    }).join("");
+  }
+
+  document.getElementById('foot').textContent = totalsLine(d);
+
+  const warn = document.getElementById('warn');
+  if (d.basis_note || (d.id === "accounting_balance" && d.totals.control !== 0)) {
+    warn.style.display = "block";
+    warn.innerHTML = (d.basis_note
+      ? d.basis_note + "<br><br>"
+      : "")
+      + "<b>توجه به کنترل:</b> کنترل ترازنامه "
+      + Number(d.totals.control).toLocaleString('en-US')
+      + " ریال است، نه صفر. دلیلش این است که چهار طبقه این گزارش در فایل مالک "
+      + "دستی پر می‌شوند (دارایی ثابت F…، وام L…، افتتاحیه، تراکنش شخصی) و برنامه "
+      + "آن‌ها را محاسبه نمی‌کند. گزارش این را پنهان نمی‌کند — اگر کنترل صفر نبود، "
+      + "یعنی یک طبقه واقعاً کم است.";
+  } else {
+    warn.style.display = "none";
+  }
+
+  document.getElementById('status').textContent =
+    d.title + " · " + d.rows.length + " ردیف · از پایگاه داده واقعی";
+}
+
+document.querySelectorAll('.card:not(.na)').forEach(card => {
+  card.addEventListener('click', () => {
+    document.querySelectorAll('.card').forEach(c => c.classList.remove('sel'));
+    card.classList.add('sel');
+    render(card.dataset.k);
+  });
+});
+
+render('cheques_issues');
+</script>
+</body>
+</html>

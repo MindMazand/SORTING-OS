@@ -27,6 +27,7 @@ namespace Mazandasht.Presentation
     {
         private SecondMonitorWindow _secondMonitor;
         private Tools.ToolsWindow _toolsWindow;
+        private Reports.ReportsWindow _reportsWindow;
         private Import.ImportWindow _importWindow;
         private DashboardViewModel _vm;
         private IDashboardStore _store;
@@ -181,7 +182,11 @@ namespace Mazandasht.Presentation
                 SelectTool("ابزارهای نگهداری", NavTools);
                 OpenTools();
             }
-            else if (source == NavReports) { SelectTool("گزارش‌ها", NavReports); }
+            else if (source == NavReports)
+            {
+                SelectTool("گزارش‌ها", NavReports);
+                OpenReports();
+            }
             else if (source == NavWeigh) { SelectTool("باسکول", NavWeigh); }
             else if (source == NavSorting) { SelectTool("سورتینگ", NavSorting); }
             else if (source == NavInvoices) { SelectTool("خرید و فروش", NavInvoices); }
@@ -219,6 +224,29 @@ namespace Mazandasht.Presentation
             _toolsWindow.Owner = this;
             _toolsWindow.Closed += (s, e) => _toolsWindow = null;
             _toolsWindow.Show();
+        }
+
+        /// <summary>
+        /// Open the reports window.
+        ///
+        /// Before this method existed, the Reports nav button only changed a
+        /// label: it looked like navigation and did nothing. A button that
+        /// responds by highlighting itself and no more is worse than a disabled
+        /// one, because the owner concludes the software has no reports.
+        /// </summary>
+        private void OpenReports()
+        {
+            if (_reportsWindow != null && _reportsWindow.IsLoaded)
+            {
+                _reportsWindow.Activate();
+                return;
+            }
+            Reports.ReportsViewModel vm =
+                Reports.ReportWiring.Create(DatabasePathProvider.Resolve());
+            _reportsWindow = new Reports.ReportsWindow(vm);
+            _reportsWindow.Owner = this;
+            _reportsWindow.Closed += (s, e) => _reportsWindow = null;
+            _reportsWindow.Show();
         }
 
         /// <summary>

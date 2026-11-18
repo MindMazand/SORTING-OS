@@ -70,6 +70,11 @@
     <SolidColorBrush x:Key="PendingWashBrush" Color="#FFF2CC"/>
     <SolidColorBrush x:Key="DangerBrush" Color="#A61B1B"/>
     <SolidColorBrush x:Key="DangerWashBrush" Color="#FCE4D6"/>
+    <!-- Warning is deliberately NOT Danger: a report that cannot be built
+         because the owner has not defined it yet is not an error, and using
+         red for it would train the owner to ignore red. Same amber as Pending
+         because it means the same thing: blocked on a decision. -->
+    <SolidColorBrush x:Key="WarningBrush" Color="#8A6D1F"/>
     <SolidColorBrush x:Key="SuccessBrush" Color="#1E7A34"/>
     <SolidColorBrush x:Key="SuccessWashBrush" Color="#E2F0D9"/>
 
