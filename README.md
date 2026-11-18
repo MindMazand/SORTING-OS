@@ -17,14 +17,14 @@
 
 | بخش | وضعیت | شاهد |
 |---|---|---|
-| اسکیمای دیتابیس (تمام موجودیت‌های فصل ۱۸) | IMPLEMENTED + TESTED | `database/schema/schema_v001.sql` + `database/migrations/002_v002_workbook_alignment.sql` + `tools/verify_database.py` → **39/39 PASS** (اسکیمای v4) |
+| اسکیمای دیتابیس (تمام موجودیت‌های فصل ۱۸) | ✅ IMPLEMENTED + TESTED | `database/schema/schema_v001.sql` + `database/migrations/002`…`005` + `tools/verify_database.py` → **40/40 PASS** (اسکیمای v5) |
 | داده پایه (کدها، P01/P02، بانک‌ها، نقش‌ها) | IMPLEMENTED + TESTED | `database/seed/seed_v001.sql` |
 | هسته دامنه C# (پول/وزن/تراز/تسویه/کدینگ/امنیت) | IMPLEMENTED (NOT RUN) | `src/Mazandasht.Domain` — ساخت روی Windows لازم است |
 | پوسته WPF (داشبورد، دکمه +، نمایشگر دوم) | IMPLEMENTED (NOT RUN) | `src/Mazandasht.Presentation` |
 | تست‌های C# (xUnit) | NOT RUN | `src/Mazandasht.Tests` — اجرا روی Windows |
-| فایل‌های Excel مرجع | ✅ رفع شد (BLOCKED-01) | ۱۵ فایل سیستم + ۱۱ قالب واردسازی از Google Drive مالک استخراج شد؛ ساختار در `docs/WORKBOOK_SPEC_FA.md` — فقط ساختار، بدون داده واقعی |
+| فایل‌های Excel مرجع | ✅ رفع شد (BLOCKED-01) | ۱۵ فایل سیستم + **۱۱ قالب واقعی** در `tests/fixtures/owner_templates/` دانلود شد و به‌عنوان مرجع تست استفاده می‌شود. **داده واقعی وجود ندارد** — `reports/OWNER_DATA_AUDIT_FA.md` |
 | `schema_v002` + `v003` vs قالب‌های مالک | ✅ ساخته و تست شد | هر ۲۲ شکاف بسته شد (۲ بازسازی جدول + ۲۰ ستون + ۹ تریگر). `docs/decision-log.md` DEC-NEW-010..014 · `reports/STAGE_SCHEMA_V002_FA.md` |
-| موتور واردسازی Excel (۷ مرحله) | ✅ IMPLEMENTED + TESTED | `tools/xlsx_io.py`, `import_contract.py`, `import_parser.py`, `import_engine.py` → `tools/test_import.py` **34/34 PASS** · `reports/STAGE_IMPORT_ENGINE_FA.md` |
+| موتور واردسازی Excel (۷ مرحله) | ✅ IMPLEMENTED + TESTED | `tools/xlsx_io.py`, `import_contract.py`, `import_parser.py`, `import_engine.py` → `tools/test_import.py` **39/39 PASS** · `reports/STAGE_IMPORT_ENGINE_FA.md` |
 | پورت C# موتور واردسازی | 🟡 IMPLEMENTED / NOT RUN | ۸ فایل در `src/Mazandasht.Application/Import/` + `SqliteImportStore.cs` + `SqliteImportBatchStore.cs`. نحو، تطبیق قرارداد (۱۲۹ ستون)، و ستون‌های اسکیما (۱۸۷) PASS — اما **کامپایل/اجرا نشده** · `reports/STAGE_CSHARP_PORT_FA.md` |
 | پیش‌نیاز اختیاری | `python3 -m pip install --break-system-packages -r tools/requirements.txt` — بدون آن، بررسی صحت نحوی C# رد می‌شود ولی بقیه دروازه‌ها کار می‌کنند |
 | بررسی‌های بدون .NET | ✅ ۹ دروازه | `python3 tools/verify_all.py` → اسکیما ۳۹/۳۹ · واردسازی ۳۹/۳۹ · تطبیق قرارداد · ستون↔اسکیما+طرح برگشت · نگاشت قرارداد↔اسکیما · ارجاع پروژه‌ها · زنجیره ۱۱ قالب · قالب‌های واقعی مالک · بردارهای طلایی |
@@ -35,6 +35,14 @@
 جزئیات: `reports/INITIAL_REPOSITORY_AUDIT.md`، `reports/BASELINE.md` و `docs/WORKBOOK_SPEC_FA.md` (مشخصات قالب‌های کاری).
 
 ## ساخت روی Windows
+
+> **صادقانه:** C# در محیط توسعهٔ خودکار این مخزن **کامپایل نشده**. هفت مسیر برای
+> آوردن کامپایلر امتحان شد و هیچ‌کدام نشد؛ و مهم‌تر اینکه هدف WPF روی .NET
+> Framework 4.8 است که روی لینوکس اصلاً build نمی‌شود. فقط یک مسیر نیمه‌کاره
+> جواب داد: **.NET Core 2.0 runtime** دانلود و اجرا شد (بدون کامپایلر).
+> گزارش کامل: `reports/CSHARP_BUILD_ATTEMPT_FA.md`. اعداد سبز زیر همه از
+> پیاده‌سازی **پایتون** روی فایل‌های **واقعی** مالک می‌آیند.
+
 
 1. Visual Studio 2019+ با .NET Framework 4.8 SDK و WPF را نصب کنید.
 2. `src/Mazandasht.sln` را باز و Build کنید (x64).
