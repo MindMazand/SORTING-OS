@@ -25,9 +25,13 @@
         <TextBlock Grid.Row="0" Text="مرکز ابزارها"
                    Style="{StaticResource SectionTitleStyle}" FontSize="24"/>
 
-        <TextBlock Grid.Row="1" Style="{StaticResource MutedLabelStyle}"
-                   TextWrapping="Wrap" Margin="0,0,0,14"
-                   Text="هر ابزار سه چیز می‌گوید: چه می‌کند، آخرین بار چه زمانی اجرا شد، و آیا همین حالا سالم است."/>
+        <DockPanel Grid.Row="1" Margin="0,0,0,14" LastChildFill="False">
+            <Button x:Name="ProbeButton" Content="بررسی دوباره" DockPanel.Dock="Left"
+                    Style="{StaticResource GlassButtonStyle}" Padding="10,4"/>
+            <TextBlock Style="{StaticResource MutedLabelStyle}"
+                       TextWrapping="Wrap" VerticalAlignment="Center"
+                       Text="هر ابزار سه چیز می‌گوید: چه می‌کند، آخرین بار چه زمانی اجرا شد، و آیا همین حالا سالم است."/>
+        </DockPanel>
 
         <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto">
             <StackPanel>
