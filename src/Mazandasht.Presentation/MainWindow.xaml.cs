@@ -27,6 +27,7 @@ namespace Mazandasht.Presentation
     {
         private SecondMonitorWindow _secondMonitor;
         private Tools.ToolsWindow _toolsWindow;
+        private Import.ImportWindow _importWindow;
         private DashboardViewModel _vm;
         private IDashboardStore _store;
 
@@ -170,7 +171,11 @@ namespace Mazandasht.Presentation
             if (source == null) return;
 
             if (source == NavDashboard) { SelectTool("داشبورد مدیریتی", NavDashboard); }
-            else if (source == NavImport) { SelectTool("مرکز واردسازی", NavImport); }
+            else if (source == NavImport)
+            {
+                SelectTool("مرکز واردسازی", NavImport);
+                OpenImport();
+            }
             else if (source == NavTools)
             {
                 SelectTool("ابزارهای نگهداری", NavTools);
@@ -214,6 +219,24 @@ namespace Mazandasht.Presentation
             _toolsWindow.Owner = this;
             _toolsWindow.Closed += (s, e) => _toolsWindow = null;
             _toolsWindow.Show();
+        }
+
+        /// <summary>
+        /// Same single-instance rule as the tools window: two import windows
+        /// would mean two file previews against one database, and the owner
+        /// could commit from a stale one.
+        /// </summary>
+        private void OpenImport()
+        {
+            if (_importWindow != null && _importWindow.IsLoaded)
+            {
+                _importWindow.Activate();
+                return;
+            }
+            _importWindow = new Import.ImportWindow();
+            _importWindow.Owner = this;
+            _importWindow.Closed += (s, e) => _importWindow = null;
+            _importWindow.Show();
         }
 
         // ------------------------------------------------------------------

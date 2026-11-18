@@ -30,6 +30,10 @@ STEPS = [
     ("SQL داشبورد: پایتون ↔ C# یکسان", ["tools/check_dashboard_parity.py"]),
     ("اعداد SQL استخراج‌شده از C#", ["tools/test_dashboard_cs_sql.py"]),
     ("سالم‌بودن XAML (بدون کامپایلر)", ["tools/check_xaml.py", "--strict"]),
+    # --- import centre round ---
+    ("دامنه بررسی تأیید در برگشت دسته", ["tools/test_import_batch_scope.py"]),
+    ("جریان مرکز واردسازی سرتاسری", ["tools/test_import_centre_flow.py"]),
+    ("ردپای حسابرسی (فصل ۱۰)", ["tools/test_audit_trail.py"]),
 ]
 
 

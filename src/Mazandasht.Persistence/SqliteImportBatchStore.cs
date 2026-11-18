@@ -19,7 +19,7 @@ namespace Mazandasht.Persistence
     ///     pointer for rollback, and a pointer that also carried the data would
     ///     go stale the moment the document is edited.
     /// </summary>
-    public sealed class SqliteImportBatchStore : IImportBatchStore
+    public sealed class SqliteImportBatchStore : IImportBatchStore, IDisposable
     {
         private readonly SQLiteConnection _connection;
 
@@ -158,6 +158,69 @@ namespace Mazandasht.Persistence
             }
         }
 
+        /// <summary>
+        /// Newest batches first. `limit` is clamped in SQL rather than trusted:
+        /// the caller is a UI list and a negative or absurd limit must not
+        /// become a full-table scan on a file the owner is importing into.
+        /// </summary>
+        public IReadOnlyList<ImportBatchInfo> ListBatches(int limit)
+        {
+            if (limit < 1) limit = 1;
+            if (limit > 500) limit = 500;
+
+            var list = new List<ImportBatchInfo>();
+            using (var cmd = _connection.CreateCommand())
+            {
+                cmd.CommandText =
+                    "SELECT id, code, file_name, detected_type, status, " +
+                    "total_rows, valid_rows, invalid_rows " +
+                    "FROM import_batches ORDER BY id DESC LIMIT @n";
+                cmd.Parameters.AddWithValue("@n", limit);
+                using (var r = cmd.ExecuteReader())
+                {
+                    while (r.Read()) list.Add(ReadBatch(r));
+                }
+            }
+            return list;
+        }
+
+        public ImportBatchInfo GetBatch(long batchId)
+        {
+            using (var cmd = _connection.CreateCommand())
+            {
+                cmd.CommandText =
+                    "SELECT id, code, file_name, detected_type, status, " +
+                    "total_rows, valid_rows, invalid_rows " +
+                    "FROM import_batches WHERE id=@i";
+                cmd.Parameters.AddWithValue("@i", batchId);
+                using (var r = cmd.ExecuteReader())
+                {
+                    return r.Read() ? ReadBatch(r) : null;
+                }
+            }
+        }
+
+        /// <summary>
+        /// One reader -> one batch. Column order must match both queries above;
+        /// a mismatch here would silently swap rows for valid counts, which is
+        /// exactly the kind of quiet wrongness that makes an audit trail
+        /// worthless.
+        /// </summary>
+        private static ImportBatchInfo ReadBatch(SQLiteDataReader r)
+        {
+            return new ImportBatchInfo
+            {
+                Id = r.GetInt64(0),
+                Code = r.IsDBNull(1) ? "" : r.GetString(1),
+                FileName = r.IsDBNull(2) ? "" : r.GetString(2),
+                DetectedType = r.IsDBNull(3) ? "" : r.GetString(3),
+                Status = r.IsDBNull(4) ? "DRAFT" : r.GetString(4),
+                TotalRows = r.IsDBNull(5) ? 0 : r.GetInt32(5),
+                ValidRows = r.IsDBNull(6) ? 0 : r.GetInt32(6),
+                InvalidRows = r.IsDBNull(7) ? 0 : r.GetInt32(7),
+            };
+        }
+
         public IReadOnlyList<ImportedRowRef> GetImportedRows(long batchId)
         {
             var list = new List<ImportedRowRef>();
@@ -195,8 +258,21 @@ namespace Mazandasht.Persistence
             return list;
         }
 
-        /// <summary>True when any document this batch created is no longer a
-        /// draft. Rollback must refuse in that case.</summary>
+        /// <summary>
+        /// True when any document THIS BATCH created has since been approved.
+        /// Rollback must refuse in that case.
+        ///
+        /// The batch filter is not optional. The first version of this method
+        /// counted `status='APPROVED'` across the whole table, so a single
+        /// approved invoice from last month made every future rollback of that
+        /// document type refuse — including a batch of pure drafts. The owner
+        /// would see "cannot roll back: approved documents exist" about
+        /// documents their batch never touched, and the only way out would be
+        /// deleting data by hand.
+        ///
+        /// The link is import_rows.new_id (written by ImportRunner when the
+        /// document is created), so the query joins through the batch.
+        /// </summary>
         public bool AnyApproved(ImportBatchInfo batch)
         {
             if (batch == null) return false;
@@ -204,8 +280,20 @@ namespace Mazandasht.Persistence
             if (table == null) return false;
             using (var cmd = _connection.CreateCommand())
             {
+                // Both spacings are matched: this writer emits
+                // '{"new_id":5}' (no space) while the Python engine's
+                // json.dumps emits '{"new_id": 5}' (with space). A pattern
+                // hard-coded to one form matches nothing against the other,
+                // which silently disables the approval guard and lets a
+                // rollback delete approved documents.
                 cmd.CommandText =
-                    "SELECT COUNT(*) FROM " + table + " WHERE status='APPROVED'";
+                    "SELECT COUNT(*) FROM " + table + " t " +
+                    "JOIN import_rows r ON (" +
+                    "  r.mapped_json LIKE '{\"new_id\":' || t.id || '%' " +
+                    "  OR r.mapped_json LIKE '{\"new_id\": ' || t.id || '%'" +
+                    ") " +
+                    "WHERE r.batch_id=@b AND r.status='IMPORTED' AND t.status='APPROVED'";
+                cmd.Parameters.AddWithValue("@b", batch.Id);
                 return Convert.ToInt64(cmd.ExecuteScalar()) > 0;
             }
         }
@@ -264,6 +352,17 @@ namespace Mazandasht.Persistence
                 cmd.Parameters.AddWithValue("@id", batchId);
                 cmd.ExecuteNonQuery();
             }
+        }
+
+        /// <summary>
+        /// The store owns one open connection. Without this the connection and
+        /// its file handle survive until the GC finalises it, and on Windows
+        /// that keeps a lock on the database file — the next backup copy or
+        /// restore attempt fails with a sharing violation.
+        /// </summary>
+        public void Dispose()
+        {
+            _connection.Dispose();
         }
 
         private static string Truncate(string text, int max)

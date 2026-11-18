@@ -51,6 +51,21 @@ namespace Mazandasht.Application.Import
         /// <summary>Batch code is fixed at creation and is the human handle for
         /// the audit trail (IMP-20261117-...). Never reused.</summary>
         string NextBatchCode();
+
+        /// <summary>
+        /// Most recent batches, newest first, for the import centre's history.
+        ///
+        /// What each status means to the owner, because the enum is not
+        /// self-evident from the name:
+        ///   REVIEW      imported, waiting for the manager to approve
+        ///   APPROVED    confirmed; its documents are now immutable
+        ///   ROLLED_BACK deleted cleanly; the audit row stays on purpose
+        ///   FAILED      the file was refused; import_rows says per row why
+        /// </summary>
+        IReadOnlyList<ImportBatchInfo> ListBatches(int limit);
+
+        /// <summary>A single batch by id, or null when it does not exist.</summary>
+        ImportBatchInfo GetBatch(long batchId);
     }
 
     public sealed class RollbackOutcome

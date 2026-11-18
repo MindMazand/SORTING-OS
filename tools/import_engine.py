@@ -399,8 +399,21 @@ def import_file(con, path: str, expected: Optional[str] = None,
                         (str(e)[:900], row_id))
 
         if commit:
+            # The batch is NOT approved here. A batch tracks a file that was
+            # read and written; approval is a separate manager decision about
+            # the DOCUMENTS, and this module's whole contract (see the module
+            # docstring) is that it "can never produce an APPROVED row".
+            #
+            # Setting it to APPROVED was a real defect: it contradicted that
+            # docstring, disagreed with the C# implementation (which creates
+            # the batch as REVIEW and never touches the status afterwards), and
+            # made the import centre's rollback gate -- which requires REVIEW --
+            # permanently disabled against any batch imported by the engine.
+            #
+            # Leaving it REVIEW is also what makes rollback legal: the gate is
+            # "no approved DOCUMENT in this batch", checked separately.
             con.execute(
-                "UPDATE import_batches SET status='APPROVED' WHERE id=?", (batch_id,))
+                "UPDATE import_batches SET status='REVIEW' WHERE id=?", (batch_id,))
             con.execute("COMMIT")
         return out
     except Exception:
@@ -897,7 +910,7 @@ def rollback_batch(con, batch_id: int) -> BatchResult:
         "SELECT id, mapped_json FROM import_rows WHERE batch_id=? AND status='IMPORTED'",
         (batch_id,)).fetchall()
 
-    frozen = _frozen_documents(con, tpl_code)
+    frozen = _frozen_documents(con, tpl_code, batch_id)
     if frozen:
         out.errors.append(
             "برگشت ممکن نیست: اسناد تأییدشده‌ای در این دسته وجود دارند "
@@ -929,14 +942,39 @@ def rollback_batch(con, batch_id: int) -> BatchResult:
     return out
 
 
-def _frozen_documents(con, tpl_code: str) -> List[str]:
+def _frozen_documents(con, tpl_code: str, batch_id: int) -> List[str]:
+    """Approved documents THAT THIS BATCH CREATED.
+
+    The batch filter is not optional. The previous version counted
+    `status='APPROVED'` across the whole table, so a single approved invoice
+    from any earlier day made every future rollback of that document type
+    refuse -- including a batch of pure drafts, and including rollbacks run in
+    a test that never touched those documents. The owner would be told
+    "approved documents exist" about documents their batch never created.
+
+    The link is import_rows.mapped_json -> {"new_id": n}, written when the
+    document is created. `source_key` is deliberately not used: it identifies
+    the source ROW, not the batch that wrote it.
+    """
     table, _ = TARGETS.get(tpl_code, (None, None))
     if not table:
         return []
     cols = {r[1] for r in con.execute(f"PRAGMA table_info({table})")}
-    if "status" not in cols or "source_key" not in cols:
+    if "status" not in cols:
         return []
+    # Both spacings are matched on purpose. json.dumps writes '{"new_id": 5}'
+    # WITH a space, while the C# writer emits '{"new_id":5}' without one. A
+    # LIKE pattern hard-coded to either form silently matches nothing against
+    # the other — which is how the first version of this fix disabled the
+    # approval guard entirely and let a rollback delete approved documents.
+    # json_extract() would be cleaner but requires the JSON1 extension, which
+    # is not guaranteed in System.Data.SQLite on Windows 8.1.
     n = con.execute(
-        f"SELECT COUNT(*) FROM {table} WHERE status='APPROVED' AND source_key IS NOT NULL"
-    ).fetchone()[0]
+        f"SELECT COUNT(*) FROM {table} t "
+        "JOIN import_rows r ON ("
+        "  r.mapped_json LIKE '{\"new_id\":' || t.id || '%' "
+        "  OR r.mapped_json LIKE '{\"new_id\": ' || t.id || '%'"
+        ") "
+        "WHERE r.batch_id=? AND r.status='IMPORTED' AND t.status='APPROVED'",
+        (batch_id,)).fetchone()[0]
     return [f"{table}: {n} سند تأییدشده"] if n else []
