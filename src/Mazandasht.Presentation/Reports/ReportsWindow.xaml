@@ -1,0 +1,147 @@
+<Window x:Class="Mazandasht.Presentation.Reports.ReportsWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="گزارش‌ها — مازندشت"
+        Width="1180" Height="800"
+        FlowDirection="RightToLeft" WindowStartupLocation="CenterOwner"
+        Background="{StaticResource AppBackgroundBrush}"
+        FontFamily="{StaticResource PersianFont}">
+    <Window.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="../Design/Theme.v2.xaml"/>
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </Window.Resources>
+
+    <Grid Margin="20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <TextBlock Grid.Row="0" Text="گزارش‌ها"
+                   Style="{StaticResource SectionTitleStyle}" FontSize="24"/>
+
+        <Grid Grid.Row="1">
+            <Grid.ColumnDefinitions>
+                <!-- The picker sits on the right in an RTL window: it is the
+                     first thing read, and the grid is the result of choosing. -->
+                <ColumnDefinition Width="300"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- ===================== report picker ===================== -->
+            <Border Grid.Column="0" Style="{StaticResource PanelStyle}" Margin="0,0,10,0">
+                <DockPanel>
+                    <TextBlock DockPanel.Dock="Top"
+                               Text="۱ — گزارش را انتخاب کنید"
+                               FontWeight="SemiBold"
+                               Foreground="{StaticResource TextBrush}"
+                               Margin="0,0,0,10"/>
+
+                    <StackPanel DockPanel.Dock="Bottom" Margin="0,10,0,0">
+                        <TextBlock Text="کد فروشنده سبد (فقط برای گزارش سبد)"
+                                   Style="{StaticResource MutedLabelStyle}"
+                                   Margin="0,0,0,4"/>
+                        <TextBox x:Name="PartyCodeBox" Height="28"
+                                 VerticalContentAlignment="Center"
+                                 FlowDirection="LeftToRight"
+                                 Text="S004"/>
+                    </StackPanel>
+
+                    <ListBox x:Name="ReportList" BorderThickness="0"
+                             Background="Transparent"
+                             SelectionChanged="ReportList_SelectionChanged"
+                             ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate>
+                                <Border Padding="10,8" Margin="0,0,0,6" CornerRadius="10"
+                                        Background="{StaticResource GlassBrush}"
+                                        BorderBrush="{StaticResource HairlineBrush}"
+                                        BorderThickness="1">
+                                    <StackPanel>
+                                        <TextBlock Text="{Binding Title}" FontWeight="SemiBold"
+                                                   Foreground="{StaticResource TextBrush}"/>
+                                        <!-- A report with no layout says so on
+                                             its own card. Hiding it would be an
+                                             omission; showing it like the others
+                                             would produce an empty table that
+                                             reads as "no data". -->
+                                        <TextBlock Text="{Binding UnavailableReason}"
+                                                   TextWrapping="Wrap" Margin="0,4,0,0"
+                                                   FontSize="11"
+                                                   Foreground="{StaticResource WarningBrush}"
+                                                   Visibility="{Binding HasReason,
+                                                       Converter={StaticResource BoolToVisibility}}"/>
+                                    </StackPanel>
+                                </Border>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+                </DockPanel>
+            </Border>
+
+            <!-- ======================= the report ====================== -->
+            <Border Grid.Column="1" Style="{StaticResource PanelStyle}">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+
+                    <DockPanel Grid.Row="0" Margin="0,0,0,10">
+                        <Button x:Name="OpenButton" Content="۲ — نمایش گزارش"
+                                DockPanel.Dock="Left" VerticalAlignment="Center"
+                                Style="{StaticResource PrimaryButtonStyle}"
+                                Click="OpenButton_Click" Margin="6,0,0,0"/>
+                        <Button x:Name="ExportButton" Content="خروجی CSV"
+                                DockPanel.Dock="Left" VerticalAlignment="Center"
+                                Style="{StaticResource GlassButtonStyle}"
+                                Click="ExportButton_Click" Margin="6,0,0,0"/>
+                        <TextBlock x:Name="TitleText" Text="گزارشی انتخاب نشده"
+                                   FontWeight="SemiBold" VerticalAlignment="Center"
+                                   Foreground="{StaticResource TextBrush}"/>
+                    </DockPanel>
+
+                    <TextBlock Grid.Row="1" x:Name="DescriptionText"
+                               Style="{StaticResource MutedLabelStyle}"
+                               TextWrapping="Wrap" Margin="0,0,0,10"/>
+
+                    <!-- Columns are built in code-behind: the reports have
+                         different column counts, and a fixed set in XAML would
+                         either truncate or need seven templates. -->
+                    <DataGrid Grid.Row="2" x:Name="ReportGrid"
+                              Style="{StaticResource DataGridStyle}"
+                              ColumnHeaderStyle="{StaticResource DataGridHeaderStyle}"
+                              AutoGenerateColumns="False" IsReadOnly="True"
+                              CanUserAddRows="False" CanUserDeleteRows="False"/>
+
+                    <Border Grid.Row="3" Margin="0,10,0,0" Padding="10,8" CornerRadius="10"
+                            Background="{StaticResource GlassBrush}"
+                            BorderBrush="{StaticResource HairlineBrush}"
+                            BorderThickness="1">
+                        <StackPanel>
+                            <TextBlock x:Name="TotalsText" FontWeight="SemiBold"
+                                       FlowDirection="RightToLeft" TextWrapping="Wrap"
+                                       Foreground="{StaticResource TextBrush}"/>
+                            <!-- The cash-basis warning from the owner's own
+                                 workbook. Dropping it would let someone read
+                                 "cash profit" as real profit. -->
+                            <TextBlock x:Name="WarningText" TextWrapping="Wrap"
+                                       Margin="0,6,0,0" FontSize="11"
+                                       Foreground="{StaticResource WarningBrush}"
+                                       Visibility="Collapsed"/>
+                        </StackPanel>
+                    </Border>
+                </Grid>
+            </Border>
+        </Grid>
+
+        <TextBlock Grid.Row="2" x:Name="StatusText" Margin="0,12,0,0"
+                   Style="{StaticResource MutedLabelStyle}" TextWrapping="Wrap"/>
+    </Grid>
+</Window>

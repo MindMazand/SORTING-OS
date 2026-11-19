@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>مازندشت — پیش‌نمایش طراحی</title>
+<style>
+/*
+  PREVIEW ONLY — not the product.
+
+  Root page for the review preview. Without it, `/` served a bare directory
+  listing: two filenames, no context, no way to tell which one is the
+  dashboard and which is the reports window.
+
+  Colours are copied from src/Mazandasht.Presentation/Design/Theme.v2.xaml,
+  same as the other two pages. If they disagree, the XAML is the deliverable.
+
+  This page claims nothing. It does not run the engine, it does not read a
+  database. It links to the two pages that do.
+*/
+:root{
+  --brand:#075E1E; --brand-light:#0E7A2A; --brand-dark:#043F14;
+  --brand-tint:#E8F0E9; --on-brand-muted:#CDE8D2;
+  --app-bg:#F2F5F3; --surface:#FFFFFF; --surface-alt:#F7FAF8; --chrome:#E8EDE9;
+  --hairline:rgba(0,0,0,.13);
+  --text:#1A1A1A; --muted:#666666; --faint:#9A9A9A;
+  --pending:#8A6D1F; --pending-wash:#FFF2CC;
+  --danger:#A61B1B; --danger-wash:#FCE4D6;
+  --success:#1E7A34; --success-wash:#E2F0D9;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{
+  font-family:"Segoe UI",Tahoma,Arial,sans-serif;
+  background:var(--app-bg); color:var(--text);
+  min-height:100vh; display:flex; flex-direction:column;
+}
+
+header{background:var(--brand); color:#fff; padding:22px 28px}
+header h1{font-size:20px;font-weight:700;letter-spacing:-.2px}
+header p{font-size:12px;color:var(--on-brand-muted);margin-top:5px}
+
+main{flex:1;max-width:920px;width:100%;margin:0 auto;padding:28px 24px}
+
+.notice{
+  background:var(--pending-wash); border:1px solid rgba(138,109,31,.35);
+  border-radius:12px; padding:14px 16px; margin-bottom:24px; font-size:13px;
+  line-height:1.85; color:#5E4A12;
+}
+.notice b{color:var(--pending)}
+
+h2{font-size:13px;color:var(--muted);font-weight:600;margin:0 0 12px}
+
+.cards{display:grid;gap:14px;grid-template-columns:repeat(auto-fit,minmax(250px,1fr))}
+
+a.card{
+  display:block; text-decoration:none; color:inherit;
+  background:var(--surface); border:1px solid var(--hairline);
+  border-radius:14px; padding:18px 18px 16px;
+  transition:border-color .15s, box-shadow .15s, transform .15s;
+}
+a.card:hover{
+  border-color:var(--brand-light);
+  box-shadow:0 4px 16px rgba(7,94,30,.10);
+  transform:translateY(-1px);
+}
+a.card .t{font-size:15.5px;font-weight:700;color:var(--brand-dark);margin-bottom:6px}
+a.card .d{font-size:12.5px;color:var(--muted);line-height:1.8}
+.tag{
+  display:inline-block;margin-top:12px;font-size:10.5px;padding:3px 9px;
+  border-radius:999px;background:var(--success-wash);color:var(--success);
+}
+.tag.warn{background:var(--pending-wash);color:var(--pending)}
+
+table{width:100%;border-collapse:collapse;margin-top:8px;font-size:12.5px;background:var(--surface);
+  border:1px solid var(--hairline);border-radius:12px;overflow:hidden}
+th,td{padding:10px 12px;text-align:right;border-bottom:1px solid var(--hairline)}
+th{background:var(--surface-alt);color:var(--muted);font-weight:600;font-size:11.5px}
+tr:last-child td{border-bottom:none}
+td.ok{color:var(--success);font-weight:600}
+td.no{color:var(--danger);font-weight:600}
+
+footer{
+  border-top:1px solid var(--hairline);background:var(--surface-alt);
+  padding:14px 28px;font-size:11.5px;color:var(--faint);line-height:1.9;
+}
+code{font-family:Consolas,monospace;font-size:11px;background:var(--chrome);
+  padding:1px 5px;border-radius:4px;direction:ltr;display:inline-block}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>مازندشت — پیش‌نمایش طراحی</h1>
+  <p>بازبینی چیدمان و اعداد · نسخهٔ نمایشی، نه محصول</p>
+</header>
+
+<main>
+
+  <div class="notice">
+    <b>این HTML محصول نیست.</b> محصول واقعی WPF روی Windows 8.1 / .NET Framework 4.8 است
+    و در این محیط رندر نمی‌شود. این دو صفحه فقط برای این ساخته شده‌اند که بتوانید
+    <b>چیدمان</b> و <b>اعداد</b> را ببینید. اگر اینجا و XAML با هم اختلاف داشتند،
+    <code>Theme.v2.xaml</code> مرجع است و این فایل باید اصلاح شود.
+  </div>
+
+  <h2>صفحه‌ها</h2>
+  <div class="cards">
+
+    <a class="card" href="dashboard.html">
+      <div class="t">داشبورد</div>
+      <div class="d">
+        نوار ناوبری ۹ دکمه‌ای، نوار وضعیت، ۱۹ کاشی و مجموع فروش.
+      </div>
+      <span class="tag">قابل بازبینی</span>
+    </a>
+
+    <a class="card" href="reports.html">
+      <div class="t">پنجرهٔ گزارش‌ها</div>
+      <div class="d">
+        هفت گزارش با اعداد <b>واقعی</b> — هر جدول از اجرای موتور روی پایگاه
+        دادهٔ ساخته‌شده با مهاجرت‌های واقعی آمده است.
+      </div>
+      <span class="tag">دادهٔ واقعی</span>
+    </a>
+
+  </div>
+
+  <h2 style="margin-top:28px">چه چیزی این‌جا اثبات شده و چه چیزی نه</h2>
+  <table>
+    <thead>
+      <tr><th>ادعا</th><th>وضعیت</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>موتور گزارش‌ها ردیف درست تولید می‌کند</td><td class="ok">اثبات شده — ۱۳ تست</td></tr>
+      <tr><td>کوئری‌های C# روی schema واقعی اجرا می‌شوند</td><td class="ok">اثبات شده — ۸ گزاره</td></tr>
+      <tr><td>ستون‌ها بین پایتون و C# یکی هستند</td><td class="ok">اثبات شده — ۷ تست</td></tr>
+      <tr><td>دکمه‌های ناوبری به متد درست وصل‌اند</td><td class="ok">اثبات شده — ۶ تست</td></tr>
+      <tr><td>پنجرهٔ WPF باز می‌شود و بایندینگ‌ها حل می‌شوند</td><td class="no">اثبات نشده — کامپایلر لازم است</td></tr>
+      <tr><td>روی دادهٔ واقعی مالک اجرا شده</td><td class="no">اثبات نشده — فایل‌ها خالی‌اند</td></tr>
+    </tbody>
+  </table>
+
+</main>
+
+<footer>
+  برای ساخت و اجرای نسخهٔ واقعی: <code>reports/RUN_ON_WINDOWS_FA.md</code> ·
+  نیازمند .NET Framework <b>4.8</b> (نه ۴.۷) و Visual Studio 2019
+</footer>
+
+</body>
+</html>

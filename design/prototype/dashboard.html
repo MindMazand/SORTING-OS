@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="utf-8">
+<title>مازندشت — پیش‌نمایش داشبورد</title>
+<style>
+/*
+  PREVIEW ONLY — not the product.
+
+  WPF cannot render in this sandbox (net48 / Windows 8.1 only), so this page
+  exists to make the design reviewable. Every colour below is copied from
+  src/Mazandasht.Presentation/Design/Theme.v2.xaml and every layout choice
+  matches MainWindow.xaml. If the two disagree, the XAML is the deliverable
+  and this file is what needs fixing.
+
+  The numbers here are the ones tools/test_dashboard_cs_sql.py proved against
+  the real schema: one approved sale of 1,000,000 and one draft of 400,000
+  gives "۱٬۴۰۰٬۰۰۰" total with "بررسی‌نشده ۴۰۰٬۰۰۰" underneath.
+*/
+:root{
+  --brand:#075E1E; --brand-light:#0E7A2A; --brand-dark:#043F14;
+  --brand-tint:#E8F0E9; --on-brand-muted:#CDE8D2;
+  --app-bg:#F2F5F3; --surface:#FFFFFF; --surface-alt:#F7FAF8; --chrome:#E8EDE9;
+  --glass:rgba(255,255,255,.80); --hairline:rgba(0,0,0,.13);
+  --text:#1A1A1A; --muted:#666666; --faint:#9A9A9A;
+  --pending:#8A6D1F; --pending-wash:#FFF2CC; --danger:#A61B1B;
+  --danger-wash:#FCE4D6; --success:#1E7A34; --success-wash:#E2F0D9;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{
+  font-family:"Segoe UI",Tahoma,Arial,sans-serif;
+  background:var(--app-bg); color:var(--text); height:100vh;
+  display:grid; grid-template-columns:228px 1fr; grid-template-rows:1fr 34px;
+  overflow:hidden;
+}
+
+/* ---------- navigation rail ---------- */
+.rail{grid-row:1/3;background:var(--brand);color:#fff;display:flex;flex-direction:column}
+.brand{padding:20px 18px 16px}
+.brand h1{font-size:19px;font-weight:700;letter-spacing:-.2px}
+.brand p{font-size:10.5px;color:var(--on-brand-muted);margin-top:4px}
+.rail nav{flex:1;overflow-y:auto;padding-bottom:8px}
+.group{font-size:10.5px;color:var(--on-brand-muted);padding:18px 18px 6px}
+.group:first-of-type{padding-top:6px}
+.nav-item{
+  display:flex;align-items:center;gap:10px;
+  margin:2px 6px;padding:11px 14px;border-radius:10px;
+  color:var(--on-brand-muted);font-size:14px;cursor:pointer;
+  border-right:3px solid transparent;transition:background .15s;
+}
+.nav-item:hover{background:rgba(255,255,255,.10)}
+.nav-item.on{background:rgba(255,255,255,.15);color:#fff;border-right-color:#fff}
+.nav-item .ic{width:16px;height:16px;border:1.6px solid currentColor;border-radius:4px;opacity:.85;flex:0 0 auto}
+.rail-foot{padding:10px 10px 12px}
+.rail-foot button{
+  width:100%;padding:9px;border-radius:10px;cursor:pointer;
+  background:rgba(255,255,255,.10);color:#fff;border:1px solid rgba(255,255,255,.20);
+  font-family:inherit;font-size:13px;
+}
+.rail-foot button:hover{background:rgba(255,255,255,.18)}
+.ver{font-size:10.5px;color:var(--on-brand-muted);margin-top:8px;padding:0 6px}
+
+/* ---------- header ---------- */
+.main{display:flex;flex-direction:column;min-width:0}
+.topbar{
+  height:58px;background:var(--surface);border-bottom:1px solid var(--hairline);
+  display:flex;align-items:center;justify-content:space-between;padding:0 20px;
+  flex:0 0 auto;
+}
+.topbar .right{display:flex;align-items:center;gap:12px}
+.topbar h2{font-size:19px;font-weight:600}
+.pill{
+  background:var(--brand-tint);color:var(--brand-dark);
+  border-radius:999px;padding:3px 9px;font-size:10.5px;
+}
+.topbar .left{display:flex;align-items:center;gap:8px}
+select,button.ghost{
+  font-family:inherit;font-size:13px;padding:8px 12px;border-radius:10px;
+  border:1px solid var(--hairline);background:var(--glass);color:var(--text);
+  cursor:pointer;
+}
+button.ghost:hover{background:#fff;border-color:var(--brand)}
+
+/* ---------- KPI grid ---------- */
+.scroll{flex:1;overflow-y:auto;padding:10px 14px}
+.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+.card{
+  background:var(--glass);border:1px solid var(--hairline);border-radius:14px;
+  padding:18px;box-shadow:0 2px 18px rgba(0,0,0,.10);
+  display:flex;flex-direction:column;min-height:132px;
+}
+.card .t{font-size:11.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.card .v{display:flex;align-items:baseline;gap:6px;margin-top:6px}
+.card .n{font-size:28px;font-weight:600;direction:ltr;letter-spacing:-.5px}
+.card .u{font-size:10.5px;color:var(--faint);padding-bottom:4px}
+.card .sub{
+  align-self:flex-start;margin-top:6px;border-radius:999px;padding:2px 8px;
+  font-size:10.5px;background:var(--pending-wash);color:var(--pending);
+}
+.card .track{margin-top:auto;height:3px;border-radius:2px;background:var(--brand-tint);position:relative}
+.card .fill{position:absolute;inset-inline-start:0;top:0;bottom:0;border-radius:2px;background:var(--brand)}
+.card.danger .fill{background:var(--danger)}
+.card.danger .sub{background:var(--danger-wash);color:var(--danger)}
+.card .empty-note{font-size:10.5px;color:var(--faint);margin-top:auto}
+
+/* ---------- status bar ---------- */
+.statusbar{
+  grid-column:2;background:var(--chrome);border-top:1px solid var(--hairline);
+  display:flex;align-items:center;padding:0 20px;font-size:11.5px;color:var(--muted);
+}
+
+/* ---------- quick add ---------- */
+.fab{
+  position:fixed;inset-inline-start:28px;bottom:62px;width:62px;height:62px;
+  border-radius:50%;background:var(--brand);color:#fff;font-size:30px;font-weight:700;
+  border:none;cursor:pointer;box-shadow:0 6px 26px rgba(0,0,0,.16);
+  display:flex;align-items:center;justify-content:center;line-height:1;
+}
+.fab:hover{background:var(--brand-light)}
+
+/* ---------- legend, for the reviewer not the owner ---------- */
+.legend{
+  position:fixed;inset-inline-start:110px;bottom:64px;width:250px;
+  background:#fff;border:1px solid var(--hairline);border-radius:12px;
+  padding:12px 14px;font-size:11px;color:var(--muted);
+  box-shadow:0 6px 26px rgba(0,0,0,.14);direction:rtl;
+}
+.legend b{color:var(--text);display:block;margin-bottom:6px;font-size:11.5px}
+.legend span{display:inline-block;width:9px;height:9px;border-radius:3px;margin-inline-end:6px}
+</style>
+</head>
+<body>
+
+<aside class="rail">
+  <div class="brand">
+    <h1>مازندشت</h1>
+    <p>سورتینگ و بازرگانی</p>
+  </div>
+  <nav>
+    <div class="group">داشبورد</div>
+    <div class="nav-item on"><i class="ic"></i>داشبورد مدیریتی</div>
+    <div class="group">ابزارها</div>
+    <div class="nav-item"><i class="ic"></i>مرکز واردسازی</div>
+    <div class="nav-item"><i class="ic"></i>ابزارهای نگهداری</div>
+    <div class="nav-item"><i class="ic"></i>گزارش‌ها</div>
+    <div class="group">عملیات روزانه</div>
+    <div class="nav-item"><i class="ic"></i>باسکول</div>
+    <div class="nav-item"><i class="ic"></i>سورتینگ</div>
+    <div class="nav-item"><i class="ic"></i>خرید و فروش</div>
+    <div class="nav-item"><i class="ic"></i>بانک و چک</div>
+    <div class="nav-item"><i class="ic"></i>اشخاص</div>
+  </nav>
+  <div class="rail-foot">
+    <button>نمایشگر دوم</button>
+    <div class="ver">نسخه ۱٫۰ · اسکیمای ۵</div>
+  </div>
+</aside>
+
+<div class="main">
+  <header class="topbar">
+    <div class="right">
+      <h2>داشبورد مدیریتی</h2>
+      <span class="pill">بازه: امروز</span>
+    </div>
+    <div class="left">
+      <select><option>امروز</option><option>دو روز گذشته</option><option>هفت روز گذشته</option><option>سی روز گذشته</option></select>
+      <button class="ghost">به‌روزرسانی</button>
+    </div>
+  </header>
+
+  <div class="scroll">
+    <div class="grid">
+
+      <div class="card">
+        <div class="t">فروش امروز</div>
+        <div class="v"><span class="n">1,400,000</span><span class="u">ریال</span></div>
+        <div class="sub">تأییدشده 1,000,000 · بررسی‌نشده 400,000</div>
+        <div class="track"><div class="fill" style="width:100%"></div></div>
+      </div>
+
+      <div class="card">
+        <div class="t">خرید امروز</div>
+        <div class="v"><span class="n">850,000</span><span class="u">ریال</span></div>
+        <div class="sub">تأییدشده 600,000 · بررسی‌نشده 250,000</div>
+        <div class="track"><div class="fill" style="width:61%"></div></div>
+      </div>
+
+      <div class="card">
+        <div class="t">سود ناخالص</div>
+        <div class="v"><span class="n">550,000</span><span class="u">ریال</span></div>
+        <div class="track"><div class="fill" style="width:39%"></div></div>
+      </div>
+
+      <div class="card">
+        <div class="t">دریافت امروز</div>
+        <div class="v"><span class="n">450,000</span><span class="u">ریال</span></div>
+        <div class="sub">تأییدشده 300,000 · بررسی‌نشده 150,000</div>
+        <div class="track"><div class="fill" style="width:32%"></div></div>
+      </div>
+
+      <div class="card">
+        <div class="t">پرداخت امروز</div>
+        <div class="v"><span class="n">200,000</span><span class="u">ریال</span></div>
+        <div class="track"><div class="fill" style="width:14%"></div></div>
+      </div>
+
+      <div class="card">
+        <div class="t">اسناد منتظر تأیید</div>
+        <div class="v"><span class="n">3</span><span class="u">عدد</span></div>
+        <div class="sub">نیازمند بررسی مدیر</div>
+        <div class="track"><div class="fill" style="width:3%"></div></div>
+      </div>
+
+      <div class="card">
+        <div class="t">وزن ورودی امروز</div>
+        <div class="v"><span class="n">0.000</span><span class="u">گرم</span></div>
+        <div class="empty-note">باسکول امروز ثبت نشده</div>
+        <div class="track"><div class="fill" style="width:0"></div></div>
+      </div>
+
+      <div class="card danger">
+        <div class="t">مغایرت‌های بانکی</div>
+        <div class="v"><span class="n">0</span><span class="u">عدد</span></div>
+        <div class="empty-note">همه صورتحساب‌ها منطبق</div>
+        <div class="track"><div class="fill" style="width:0"></div></div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<div class="statusbar">داشبورد به‌روز شد · ۱۴:۳۲:۰۷ · ۱۹ شاخص از داده واقعی</div>
+<button class="fab" title="عملیات سریع">+</button>
+
+<div class="legend">
+  <b>راهنمای پیش‌نمایش</b>
+  <span style="background:var(--brand)"></span>رنگ برند #075E1E<br>
+  <span style="background:var(--pending-wash)"></span>بررسی‌نشده — از تأییدشده جدا<br>
+  <span style="background:var(--danger-wash)"></span>هشدار / مغایرت<br>
+  <span style="background:var(--brand-tint)"></span>نوار نسبت به بزرگ‌ترین شاخص
+</div>
+
+</body>
+</html>

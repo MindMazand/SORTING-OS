@@ -1,0 +1,302 @@
+<Window x:Class="Mazandasht.Presentation.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="مازندشت — سامانه یکپارچه سورتینگ و بازرگانی"
+        Width="1360" Height="860" MinWidth="1024" MinHeight="700"
+        FlowDirection="RightToLeft" WindowStartupLocation="CenterScreen"
+        Background="{StaticResource AppBackgroundBrush}"
+        FontFamily="{StaticResource PersianFont}"
+        TextOptions.TextFormattingMode="Display">
+    <Window.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="Design/Theme.v2.xaml"/>
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </Window.Resources>
+
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <!-- Right column is the navigation rail: RTL means it is the
+                 first column in reading order. -->
+            <ColumnDefinition Width="228"/>
+            <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="34"/>
+        </Grid.RowDefinitions>
+
+        <!-- ============================ Navigation rail ============================ -->
+        <Border Grid.Column="0" Grid.RowSpan="2" Background="{StaticResource BrandBrush}">
+            <DockPanel>
+                <!-- Brand block -->
+                <Border DockPanel.Dock="Top" Padding="18,20,18,16">
+                    <StackPanel>
+                        <TextBlock Text="مازندشت"
+                                   FontSize="{StaticResource FontTitle}"
+                                   FontWeight="Bold"
+                                   Foreground="{StaticResource OnBrandTextBrush}"/>
+                        <TextBlock Text="سورتینگ و بازرگانی"
+                                   FontSize="{StaticResource FontMicro}"
+                                   Foreground="{StaticResource OnBrandMutedBrush}"
+                                   Margin="0,4,0,0"/>
+                    </StackPanel>
+                </Border>
+
+                <!-- Footer: version + second monitor -->
+                <StackPanel DockPanel.Dock="Bottom" Margin="10,0,10,12">
+                    <Button x:Name="SecondMonitorButton" Content="نمایشگر دوم"
+                            Style="{StaticResource GlassButtonStyle}"
+                            HorizontalAlignment="Stretch"
+                            Background="{StaticResource GlassOnBrandBrush}"
+                            Foreground="{StaticResource OnBrandTextBrush}"
+                            Click="SecondMonitorButton_Click"/>
+                    <TextBlock x:Name="VersionText"
+                               FontSize="{StaticResource FontMicro}"
+                               Foreground="{StaticResource OnBrandMutedBrush}"
+                               Margin="6,8,6,0"/>
+                </StackPanel>
+
+                <!-- Tool groups. Every entry is a real destination; none is a
+                     placeholder with a TODO behind it. -->
+                <ScrollViewer VerticalScrollBarVisibility="Auto"
+                              HorizontalScrollBarVisibility="Disabled">
+                    <StackPanel>
+                        <ToggleButton x:Name="NavDashboard" Content="داشبورد مدیریتی"
+                                      Style="{StaticResource NavButtonStyle}"
+                                      IsChecked="True" Click="Nav_Click"/>
+
+                        <TextBlock Text="ابزارها" FontSize="{StaticResource FontMicro}"
+                                   Foreground="{StaticResource OnBrandMutedBrush}"
+                                   Margin="18,18,18,6"/>
+
+                        <ToggleButton x:Name="NavImport" Content="مرکز واردسازی"
+                                      Style="{StaticResource NavButtonStyle}"
+                                      Click="Nav_Click"/>
+                        <ToggleButton x:Name="NavTools" Content="ابزارهای نگهداری"
+                                      Style="{StaticResource NavButtonStyle}"
+                                      Click="Nav_Click"/>
+                        <ToggleButton x:Name="NavReports" Content="گزارش‌ها"
+                                      Style="{StaticResource NavButtonStyle}"
+                                      Click="Nav_Click"/>
+
+                        <TextBlock Text="عملیات روزانه" FontSize="{StaticResource FontMicro}"
+                                   Foreground="{StaticResource OnBrandMutedBrush}"
+                                   Margin="18,18,18,6"/>
+
+                        <ToggleButton x:Name="NavWeigh" Content="باسکول"
+                                      Style="{StaticResource NavButtonStyle}"
+                                      Click="Nav_Click"/>
+                        <ToggleButton x:Name="NavSorting" Content="سورتینگ"
+                                      Style="{StaticResource NavButtonStyle}"
+                                      Click="Nav_Click"/>
+                        <ToggleButton x:Name="NavInvoices" Content="خرید و فروش"
+                                      Style="{StaticResource NavButtonStyle}"
+                                      Click="Nav_Click"/>
+                        <ToggleButton x:Name="NavBank" Content="بانک و چک"
+                                      Style="{StaticResource NavButtonStyle}"
+                                      Click="Nav_Click"/>
+                        <ToggleButton x:Name="NavParties" Content="اشخاص"
+                                      Style="{StaticResource NavButtonStyle}"
+                                      Click="Nav_Click"/>
+                    </StackPanel>
+                </ScrollViewer>
+            </DockPanel>
+        </Border>
+
+        <!-- ============================ Content ============================ -->
+        <Grid Grid.Column="1" Grid.Row="0">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="58"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
+
+            <!-- Header bar -->
+            <Border Grid.Row="0" Background="{StaticResource SurfaceBrush}"
+                    BorderBrush="{StaticResource HairlineBrush}"
+                    BorderThickness="0,0,0,1">
+                <DockPanel Margin="20,0">
+                    <StackPanel DockPanel.Dock="Right" Orientation="Horizontal"
+                                VerticalAlignment="Center">
+                        <TextBlock x:Name="PageTitle" Text="داشبورد مدیریتی"
+                                   FontSize="{StaticResource FontTitle}"
+                                   FontWeight="SemiBold"
+                                   Foreground="{StaticResource TextBrush}"
+                                   VerticalAlignment="Center"/>
+                        <Border Background="{StaticResource BrandTintBrush}"
+                                CornerRadius="999" Padding="9,3" Margin="12,0,0,0"
+                                VerticalAlignment="Center">
+                            <TextBlock x:Name="RangeLabel" FontSize="{StaticResource FontMicro}"
+                                       Foreground="{StaticResource BrandDarkBrush}"/>
+                        </Border>
+                    </StackPanel>
+
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Left"
+                                VerticalAlignment="Center">
+                        <!-- Range picker: spec ch.11 requires a configurable
+                             range. Four choices, not a date dialog: the owner
+                             asks "today / 2 / 7 / 30" far more often than for
+                             an arbitrary span. -->
+                        <ComboBox x:Name="RangePicker" Width="150"
+                                  SelectionChanged="RangePicker_SelectionChanged"
+                                  VerticalContentAlignment="Center">
+                            <ComboBoxItem Content="امروز" Tag="1" IsSelected="True"/>
+                            <ComboBoxItem Content="دو روز گذشته" Tag="2"/>
+                            <ComboBoxItem Content="هفت روز گذشته" Tag="7"/>
+                            <ComboBoxItem Content="سی روز گذشته" Tag="30"/>
+                        </ComboBox>
+                        <Button x:Name="RefreshButton" Content="به‌روزرسانی"
+                                Style="{StaticResource GlassButtonStyle}"
+                                Click="RefreshButton_Click" Margin="8,0,0,0"/>
+                    </StackPanel>
+                </DockPanel>
+            </Border>
+
+            <!-- Empty state: explicit, never a wall of zeros -->
+            <Border x:Name="EmptyStatePanel" Grid.Row="1"
+                    Background="{StaticResource PendingWashBrush}"
+                    BorderBrush="{StaticResource HairlineBrush}"
+                    BorderThickness="0,0,0,1"
+                    Padding="20,12" Visibility="Collapsed">
+                <TextBlock x:Name="EmptyStateText" Foreground="{StaticResource PendingBrush}"
+                           FontSize="{StaticResource FontBody}" TextWrapping="Wrap"/>
+            </Border>
+
+            <!-- KPI grid -->
+            <ScrollViewer Grid.Row="2" x:Name="KpiScroll"
+                          VerticalScrollBarVisibility="Auto"
+                          Padding="14,10,14,10">
+                <ItemsControl x:Name="KpiItems">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <UniformGrid Columns="4"/>
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Border Style="{StaticResource KpiCardStyle}">
+                                <Grid>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="*"/>
+                                        <RowDefinition Height="16"/>
+                                    </Grid.RowDefinitions>
+
+                                    <TextBlock Grid.Row="0" Text="{Binding Title}"
+                                               FontSize="{StaticResource FontSmall}"
+                                               Foreground="{StaticResource MutedTextBrush}"
+                                               TextTrimming="CharacterEllipsis"/>
+
+                                    <StackPanel Grid.Row="1" Orientation="Horizontal"
+                                                Margin="0,6,0,0">
+                                        <TextBlock Text="{Binding Value}"
+                                                   Style="{StaticResource NumberStyle}"
+                                                   FontSize="{StaticResource FontDisplay}"/>
+                                        <TextBlock Text="{Binding Unit}"
+                                                   FontSize="{StaticResource FontMicro}"
+                                                   Foreground="{StaticResource FaintTextBrush}"
+                                                   VerticalAlignment="Bottom"
+                                                   Margin="6,0,0,4"/>
+                                    </StackPanel>
+
+                                    <!-- Pending indicator. Collapsed when there
+                                         is nothing unconfirmed: a permanent
+                                         "۰ بررسی‌نشده" is noise, not information. -->
+                                    <Border Grid.Row="2" CornerRadius="999"
+                                            Padding="8,2" Margin="0,4,0,0"
+                                            HorizontalAlignment="Right"
+                                            Background="{StaticResource PendingWashBrush}"
+                                            Visibility="{Binding HasPending,
+                                                Converter={StaticResource BoolToVisibility}}">
+                                        <TextBlock Text="{Binding Subtitle}"
+                                                   FontSize="{StaticResource FontMicro}"
+                                                   Foreground="{StaticResource PendingBrush}"/>
+                                    </Border>
+
+                                    <Grid Grid.Row="4">
+                                        <Border Height="3" CornerRadius="2"
+                                                Background="{StaticResource BrandTintBrush}"/>
+                                        <!-- The bar is sized by the view's
+                                             PaintBars pass after load; a
+                                             binding to a width would need a
+                                             converter that knows the chart
+                                             maximum, which the template cannot
+                                             see. -->
+                                        <Border x:Name="BarFill" Height="3"
+                                                CornerRadius="2"
+                                                HorizontalAlignment="Right"
+                                                Background="{StaticResource BrandBrush}"/>
+                                    </Grid>
+                                </Grid>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </ScrollViewer>
+        </Grid>
+
+        <!-- ============================ Status bar ============================ -->
+        <Border Grid.Row="1" Grid.Column="1" Background="{StaticResource ChromeBrush}"
+                BorderBrush="{StaticResource HairlineBrush}"
+                BorderThickness="0,1,0,0" Padding="20,0">
+            <TextBlock x:Name="StatusText" VerticalAlignment="Center"
+                       FontSize="{StaticResource FontSmall}"
+                       Foreground="{StaticResource MutedTextBrush}"
+                       TextTrimming="CharacterEllipsis"/>
+        </Border>
+
+        <!-- ============================ Quick add ============================ -->
+        <Button x:Name="QuickAddButton" Grid.Column="1" Grid.Row="0"
+                Content="+" Width="62" Height="62"
+                FontSize="30" FontWeight="Bold"
+                Foreground="{StaticResource OnBrandTextBrush}"
+                Background="{StaticResource BrandBrush}"
+                HorizontalAlignment="Left" VerticalAlignment="Bottom"
+                Margin="28" ToolTip="عملیات سریع"
+                Click="QuickAddButton_Click">
+            <Button.Template>
+                <ControlTemplate TargetType="Button">
+                    <Border x:Name="Shell"
+                            Background="{TemplateBinding Background}"
+                            CornerRadius="31" Effect="{StaticResource RaisedShadow}">
+                        <ContentPresenter HorizontalAlignment="Center"
+                                          VerticalAlignment="Center"/>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Shell" Property="Background"
+                                    Value="{StaticResource BrandLightBrush}"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Button.Template>
+        </Button>
+
+        <!-- The fourteen daily operations, from the registry (spec ch.13).
+             Grouped: goods, money, people. -->
+        <ContextMenu x:Name="QuickAddMenu"
+                     PlacementTarget="{Binding ElementName=QuickAddButton}"
+                     FlowDirection="RightToLeft">
+            <MenuItem Header="باسکول" Tag="WEIGH" Click="QuickAddMenu_Click"/>
+            <MenuItem Header="سورتینگ" Tag="SORTING" Click="QuickAddMenu_Click"/>
+            <MenuItem Header="خرید" Tag="PURCHASE" Click="QuickAddMenu_Click"/>
+            <MenuItem Header="فروش" Tag="SALES" Click="QuickAddMenu_Click"/>
+            <MenuItem Header="انبار" Tag="STOCK" Click="QuickAddMenu_Click"/>
+            <Separator/>
+            <MenuItem Header="سبد" Tag="BASKET" Click="QuickAddMenu_Click"/>
+            <MenuItem Header="بانک" Tag="BANK" Click="QuickAddMenu_Click"/>
+            <MenuItem Header="چک" Tag="CHEQUE" Click="QuickAddMenu_Click"/>
+            <MenuItem Header="تسویه" Tag="SETTLEMENT" Click="QuickAddMenu_Click"/>
+            <Separator/>
+            <MenuItem Header="اشخاص" Tag="PARTY" Click="QuickAddMenu_Click"/>
+            <MenuItem Header="کارکنان" Tag="EMPLOYEE" Click="QuickAddMenu_Click"/>
+            <MenuItem Header="هزینه" Tag="EXPENSE" Click="QuickAddMenu_Click"/>
+            <MenuItem Header="شراکت" Tag="PARTNERSHIP" Click="QuickAddMenu_Click"/>
+            <MenuItem Header="اسناد حسابداری" Tag="JOURNAL" Click="QuickAddMenu_Click"/>
+        </ContextMenu>
+    </Grid>
+</Window>

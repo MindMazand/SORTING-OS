@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net48</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <RootNamespace>Mazandasht.Presentation</RootNamespace>
+    <AssemblyName>Mazandasht</AssemblyName>
+    <LangVersion>7.3</LangVersion>
+    <ApplicationIcon></ApplicationIcon>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Mazandasht.Domain\Mazandasht.Domain.csproj" />
+    <ProjectReference Include="..\Mazandasht.Application\Mazandasht.Application.csproj" />
+    <ProjectReference Include="..\Mazandasht.Persistence\Mazandasht.Persistence.csproj" />
+    <ProjectReference Include="..\Mazandasht.Infrastructure\Mazandasht.Infrastructure.csproj" />
+  </ItemGroup>
+</Project>
