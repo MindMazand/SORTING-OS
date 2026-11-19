@@ -79,29 +79,47 @@ jobs:
           $msbuild = & "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe" `
             -latest -products * -requires Microsoft.Component.MSBuild -find MSBuild\**\Bin\MSBuild.exe `
             | Select-Object -First 1
+          if (-not $msbuild) {
+            Write-Host "::error::vswhere found no MSBuild.exe. Build Tools / VS workload missing on this runner image."
+            exit 1
+          }
           Write-Host "MSBuild: $msbuild"
+          Write-Host "::error::DIAG msbuild=$msbuild"
 
-          # /v:normal so the diagnostic context of each error survives.
-          & $msbuild src\Mazandasht.sln /p:Configuration=Debug /p:Platform=x64 `
-            /v:normal /nologo /p:TreatWarningsAsErrors=false 2>&1 |
-            Tee-Object -FilePath build.log
+          # cmd /c rather than a PowerShell pipeline: with a pipeline,
+          # $LASTEXITCODE can reflect Tee-Object instead of msbuild, and the
+          # redirection order differs. This form behaves identically to what
+          # the owner types at a command prompt.
+          cmd /c "`"$msbuild`" src\Mazandasht.sln /p:Configuration=Debug /p:Platform=x64 /v:normal /nologo /p:TreatWarningsAsErrors=false > build.log 2>&1"
           $code = $LASTEXITCODE
           Write-Host "MSBuild exit code: $code"
+          Write-Host "build.log lines: $((Get-Content build.log -ErrorAction SilentlyContinue).Count)"
 
-          $errors = Select-String -Path build.log -Pattern ':\s*(error|fatal error)\s+[A-Z]+\d+' |
+          $lines = Get-Content build.log -ErrorAction SilentlyContinue
+          # Two patterns: compiler diagnostics ("x.cs(12,5): error CS1234:")
+          # and MSBuild-level failures ("MSBUILD : error MSB1009:").
+          $errors = $lines | Select-String -Pattern 'error\s+[A-Z]+\d+' |
                     ForEach-Object { $_.Line.Trim() } | Select-Object -Unique
 
-          Write-Host "=== $($errors.Count) distinct compiler errors ==="
-          $errors | ForEach-Object -First 40 |
-            ForEach-Object {
-              # Truncate: an annotation has a size limit and the first line of
-              # an error is where the information is.
-              $msg = if ($_.Length -gt 400) { $_.Substring(0, 400) } else { $_ }
-              Write-Host "::error::$msg"
-            }
+          Write-Host "=== $($errors.Count) distinct error lines ==="
 
-          # Also put the whole thing in the job summary, which is API-readable
-          # and survives without the blob host.
+          if ($errors.Count -eq 0) {
+            # No error lines but a non-zero exit: the failure is not a compiler
+            # diagnostic. Emit the tail so the reason is visible, otherwise this
+            # job is as useless as no CI at all.
+            Write-Host "::error::DIAG no error-pattern lines; exit=$code. Tail follows."
+            $tail = $lines | Select-Object -Last 12
+            foreach ($t in $tail) {
+              $m = if ($t.Length -gt 300) { $t.Substring(0,300) } else { $t }
+              Write-Host "::error::DIAG-TAIL $m"
+            }
+          } else {
+            $errors | Select-Object -First 15 | ForEach-Object {
+              $m = if ($_.Length -gt 300) { $_.Substring(0,300) } else { $_ }
+              Write-Host "::error::$m"
+            }
+          }
+
           if ($errors.Count -gt 0) {
             Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value "## Compiler errors ($($errors.Count))"
             Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value '```'
