@@ -66,15 +66,50 @@ jobs:
       # MSBuild, not `dotnet build`: a net48 WPF project builds more reliably
       # under the Visual Studio MSBuild that ships on the runner than under the
       # dotnet CLI's bundled one, which does not always resolve the WPF targets.
+      # The runner's raw job log is served from an Azure blob host that is not
+      # reachable from every environment, which makes a failed build here
+      # effectively silent. So the compiler output is ALSO captured to a file
+      # and re-emitted as ::error:: workflow commands. Those become check-run
+      # annotations, which the REST API returns as plain JSON — readable with
+      # no log download at all.
       - name: Build (Debug|x64)
+        id: build
         shell: pwsh
         run: |
           $msbuild = & "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe" `
             -latest -products * -requires Microsoft.Component.MSBuild -find MSBuild\**\Bin\MSBuild.exe `
             | Select-Object -First 1
           Write-Host "MSBuild: $msbuild"
+
+          # /v:normal so the diagnostic context of each error survives.
           & $msbuild src\Mazandasht.sln /p:Configuration=Debug /p:Platform=x64 `
-            /v:minimal /nologo /p:TreatWarningsAsErrors=false
+            /v:normal /nologo /p:TreatWarningsAsErrors=false 2>&1 |
+            Tee-Object -FilePath build.log
+          $code = $LASTEXITCODE
+          Write-Host "MSBuild exit code: $code"
+
+          $errors = Select-String -Path build.log -Pattern ':\s*(error|fatal error)\s+[A-Z]+\d+' |
+                    ForEach-Object { $_.Line.Trim() } | Select-Object -Unique
+
+          Write-Host "=== $($errors.Count) distinct compiler errors ==="
+          $errors | ForEach-Object -First 40 |
+            ForEach-Object {
+              # Truncate: an annotation has a size limit and the first line of
+              # an error is where the information is.
+              $msg = if ($_.Length -gt 400) { $_.Substring(0, 400) } else { $_ }
+              Write-Host "::error::$msg"
+            }
+
+          # Also put the whole thing in the job summary, which is API-readable
+          # and survives without the blob host.
+          if ($errors.Count -gt 0) {
+            Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value "## Compiler errors ($($errors.Count))"
+            Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value '```'
+            $errors | Select-Object -First 80 | ForEach-Object { Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value $_ }
+            Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value '```'
+          }
+
+          exit $code
 
       # Build output is the artifact the owner actually needs: without it they
       # have to install Visual Studio on Windows 8.1 just to find out whether
@@ -111,11 +146,13 @@ jobs:
           dotnet test src\Mazandasht.Tests\Mazandasht.Tests.csproj `
             --configuration Debug --no-build --logger "console;verbosity=detailed"
 
-      - name: Build log on failure
-        if: failure()
-        shell: pwsh
-        run: |
-          Write-Host "::group::Compile diagnostics"
-          Get-ChildItem -Path src -Recurse -Filter *.log -ErrorAction SilentlyContinue |
-            ForEach-Object { Write-Host "--- $($_.Name)"; Get-Content $_.FullName -Tail 200 }
-          Write-Host "::endgroup::"
+      # Upload the captured log as an artifact too: artifacts are downloadable
+      # by the owner from the Actions UI, which needs no API token.
+      - name: Upload build log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-log
+          path: build.log
+          if-no-files-found: ignore
+          retention-days: 30
